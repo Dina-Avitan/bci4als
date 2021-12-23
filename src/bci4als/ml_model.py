@@ -25,34 +25,33 @@ class MLModel:
         a formatted string to print out what the animal says
     """
 
-    def __init__(self, trials: List[pd.DataFrame], labels: List[int]):
+    def __init__(self, trials: List[pd.DataFrame], labels: List[int],channel_removed:List[str]):
 
         self.trials: List[NDArray] = [t.to_numpy().T for t in trials]
         self.labels: List[int] = labels
+        self.channel_removed: List[str] = channel_removed
         self.debug = True
         self.clf = None
 
     def offline_training(self, eeg: EEG, model_type: str = 'csp_lda'):
 
         if model_type.lower() == 'csp_lda':
-
             self._csp_lda(eeg)
 
-        else:
+        elif model_type.lower() == 'simple_svm':
+            self._simple_svm(eeg)
 
+        else:
             raise NotImplementedError(f'The model type `{model_type}` is not implemented yet')
 
-    def _csp_lda(self, eeg: EEG):
-
-        print('Training CSP & LDA model')
-
+    def epochs_extractor(self, eeg: EEG):
         # convert data to mne.Epochs
         ch_names = eeg.get_board_names()
+        [ch_names.remove(bad_ch) for bad_ch in self.channel_removed if bad_ch in ch_names]
         ch_types = ['eeg'] * len(ch_names)
         sfreq: int = eeg.sfreq
         n_samples: int = min([t.shape[1] for t in self.trials])
         epochs_array: np.ndarray = np.stack([t[:, :n_samples] for t in self.trials])
-
         info = mne.create_info(ch_names, sfreq, ch_types)
         epochs = mne.EpochsArray(epochs_array, info)
 
@@ -62,6 +61,37 @@ class MLModel:
 
         # Apply band-pass filter
         epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+        return epochs
+
+    def _simple_svm(self,eeg: EEG):
+        # set montage
+        montage = make_standard_montage('standard_1020')
+        epochs.set_montage(montage)
+
+        # Apply band-pass filter
+        epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+
+        # Assemble a classifier
+        lda = LinearDiscriminantAnalysis()
+        csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)
+
+        # extract spectral features using mne
+
+
+
+        # # Use scikit-learn Pipeline
+        # self.clf = Pipeline([('CSP', csp), ('LDA', lda)])
+        #
+        # # fit transformer and classifier to data
+        # self.clf.fit(epochs.get_data(), self.labels)
+        pass
+
+    def _csp_lda(self, eeg: EEG):
+
+        print('Training CSP & LDA model')
+
+        # Extract epochs
+        epochs = self.epochs_extractor(eeg)
 
         # Assemble a classifier
         lda = LinearDiscriminantAnalysis()

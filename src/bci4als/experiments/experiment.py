@@ -27,7 +27,7 @@ class Experiment:
         self.cue_length = None
         self.trial_length = None
         self.session_directory = None
-        self.enum_image = {0: 'right', 1: 'left', 2: 'idle', 3: 'tongue', 4: 'legs'}
+        self.enum_image = {0: 'right', 1: 'left', 2: 'idle'}#, 3: 'tongue', 4: 'legs'}
         self.experiment_type = None
         self.skip_after = None
 
@@ -143,7 +143,7 @@ class Experiment:
 
         return session_folder
 
-    def _init_labels(self, keys=(0, 1, 2, 3, 4)):
+    def _init_labels(self, keys=(0, 1, 2)):#, 3, 4)):
         """
         This method creates dict containing a stimulus vector
         :return: the stimulus in each trial (list)

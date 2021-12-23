@@ -276,7 +276,7 @@ class EEG:
         return status, int(label), int(index)
 
     @staticmethod
-    def laplacian(data: NDArray, channels: List[str]):
+    def laplacian(data: NDArray):
         """
         The method execute laplacian on the raw data.
         The laplacian was computed as follows:
@@ -286,16 +286,14 @@ class EEG:
         The data need to be (n_channel, n_samples)
         :return:
         """
+        channel_removed = ['Cz','CP5','FC5','FC1','CP5','FC2','FC6','CP2','CP6']
+        for trial in range(len(data)):
+            # C3
+            data[trial]['C3'] -= (data[trial]['Cz'] + data[trial]['FC5'] + data[trial]['FC1'] +
+                                data[trial]['CP5'] + data[trial]['CP1']) / 5
 
-        # Dict with all the indices of the channels
-        idx = {ch: channels.index(ch) for ch in channels}
-
-        # C3
-        data[idx['C3']] -= (data[idx['Cz']] + data[idx['FC5']] + data[idx['FC1']] +
-                            data[idx['CP5']] + data[idx['CP1']]) / 5
-
-        # C4
-        data[idx['C4']] -= (data[idx['Cz']] + data[idx['FC2']] + data[idx['FC6']] +
-                            data[idx['CP2']] + data[idx['CP6']]) / 5
-
-        return data[[idx['C3'], idx['C4']]]
+            # C4
+            data[trial]['C4'] -= (data[trial]['Cz'] + data[trial]['FC2'] + data[trial]['FC6'] +
+                                data[trial]['CP2'] + data[trial]['CP6']) / 5
+            data[trial] = data[trial].drop(columns=['Cz','CP5','FC5','FC1','CP5','FC2','FC6','CP2','CP6'])
+        return data, channel_removed
