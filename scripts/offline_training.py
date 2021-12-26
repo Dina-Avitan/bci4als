@@ -19,10 +19,11 @@ def offline_experiment():
     # do Laplacian filter
     trials, channel_removed = eeg.laplacian(trials)
     pickle.dump(trials, open(os.path.join(session_directory, 'trials_after_laplacian.pickle'), 'wb'))
-    # channel_removed = channel_removed.append() ##TODO: NOAM WILL MAKE OUTLIER CHANNELS TO REMOVE
+    # channel_removed = channel_removed.append() ##TODO: NOAM WILL MAKE OUTLIER CHANNELS DISAPPEAR
 
     # Get model ready for classification
     model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
+    model_test = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
     pickle.dump(model, open(os.path.join(session_directory, 'raw_data.pickle'), 'wb'))
 
     # save epochs
@@ -31,6 +32,8 @@ def offline_experiment():
 
     # train model and classify
     model.offline_training(eeg=eeg, model_type='csp_lda')
+    features = model_test.offline_training(eeg=eeg, model_type='simple_svm')
+    pickle.dump(features, open(os.path.join(session_directory, 'features.pickle'), 'wb'))
 
     # Dump the MLModel
     pickle.dump(model, open(os.path.join(session_directory, 'model.pickle'), 'wb'))

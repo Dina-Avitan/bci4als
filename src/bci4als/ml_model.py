@@ -11,7 +11,7 @@ from mne.decoding import CSP
 from nptyping import NDArray
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
-
+import scipy
 
 class MLModel:
     """
@@ -25,7 +25,7 @@ class MLModel:
         a formatted string to print out what the animal says
     """
 
-    def __init__(self, trials: List[pd.DataFrame], labels: List[int],channel_removed:List[str]):
+    def __init__(self, trials: List[pd.DataFrame], labels: List[int], channel_removed:List[str]):
 
         self.trials: List[NDArray] = [t.to_numpy().T for t in trials]
         self.labels: List[int] = labels
@@ -63,28 +63,36 @@ class MLModel:
         epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
         return epochs
 
-    def _simple_svm(self,eeg: EEG):
-        # set montage
-        montage = make_standard_montage('standard_1020')
-        epochs.set_montage(montage)
+    def _simple_svm(self, eeg: EEG):
+        epochs = self.epochs_extractor(eeg)
 
-        # Apply band-pass filter
-        epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+        #Extract spectral features
+        data = epochs.get_data()
+        bands = np.matrix('8 12; 16 22; 30 35')
+        fs = epochs.info['sfreq']
+        bandpower_features = self.extract_bandpower(data, bands, fs)
+        return bandpower_features
 
-        # Assemble a classifier
-        lda = LinearDiscriminantAnalysis()
-        csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)
-
-        # extract spectral features using mne
-
-
-
-        # # Use scikit-learn Pipeline
-        # self.clf = Pipeline([('CSP', csp), ('LDA', lda)])
-        #
-        # # fit transformer and classifier to data
-        # self.clf.fit(epochs.get_data(), self.labels)
-        pass
+    def extract_bandpower(self, data: NDArray,bands: np.matrix, fs: int):
+        bp_mat_final = pd.DataFrame()
+        for band in bands:
+            bp_mat = np.zeros((data.shape[0], data.shape[1]))
+            fmin = band.item(0)
+            fmax = band.item(1)
+            f, pxx = scipy.signal.periodogram(data, fs=fs)
+            ind_min = scipy.argmax(f > fmin) - 1
+            ind_max = scipy.argmax(f > fmax) - 1
+            bp_func = lambda power_elec: scipy.trapz(power_elec[ind_min: ind_max], f[ind_min: ind_max])
+            for trial in range(data.shape[0]):
+                bp_per_elec_per_trial = []
+                power = pxx[trial]
+                for elec in range(data.shape[1]):
+                    bp_per_elec_per_trial.append([bp_func(power[elec])])
+                bp_mat[trial] = np.asarray(bp_per_elec_per_trial).T
+            bp_concat = pd.DataFrame(bp_mat)
+            pd.concat([bp_mat_final, bp_concat], axis=1)
+        pickle.dump(bp_mat_final, open(os.path.join('', 'features.pickle'), 'wb'))
+        return bp_mat_final
 
     def _csp_lda(self, eeg: EEG):
 
