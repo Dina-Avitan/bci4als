@@ -33,6 +33,7 @@ def offline_experiment():
     # train model and classify
     model.offline_training(eeg=eeg, model_type='csp_lda')
     features = model_test.offline_training(eeg=eeg, model_type='simple_svm')
+    print(features.shape)
     pickle.dump(features, open(os.path.join(session_directory, 'features.pickle'), 'wb'))
 
     # Dump the MLModel

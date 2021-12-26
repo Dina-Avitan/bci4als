@@ -71,6 +71,7 @@ class MLModel:
         bands = np.matrix('8 12; 16 22; 30 35')
         fs = epochs.info['sfreq']
         bandpower_features = self.extract_bandpower(data, bands, fs)
+        print(bandpower_features.shape)
         return bandpower_features
 
     def extract_bandpower(self, data: NDArray,bands: np.matrix, fs: int):
@@ -90,8 +91,8 @@ class MLModel:
                     bp_per_elec_per_trial.append([bp_func(power[elec])])
                 bp_mat[trial] = np.asarray(bp_per_elec_per_trial).T
             bp_concat = pd.DataFrame(bp_mat)
-            pd.concat([bp_mat_final, bp_concat], axis=1)
-        pickle.dump(bp_mat_final, open(os.path.join('', 'features.pickle'), 'wb'))
+            bp_mat_final = pd.concat([bp_mat_final, bp_concat], axis=1)
+        bp_mat_final.transpose().reset_index(drop=True).transpose()
         return bp_mat_final
 
     def _csp_lda(self, eeg: EEG):
