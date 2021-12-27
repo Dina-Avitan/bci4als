@@ -3,6 +3,7 @@ import pickle
 from bci4als.eeg import EEG
 from bci4als.ml_model import MLModel
 from bci4als.experiments.offline import OfflineExperiment
+import numpy as np
 
 
 def offline_experiment():
@@ -10,7 +11,7 @@ def offline_experiment():
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2
     eeg = EEG(board_id=SYNTHETIC_BOARD)
-    exp = OfflineExperiment(eeg=eeg, num_trials=5, trial_length=3,
+    exp = OfflineExperiment(eeg=eeg, num_trials=40, trial_length=3,
                             full_screen=True, audio=False)
     channel_removed = []
     trials, labels = exp.run()
@@ -24,20 +25,19 @@ def offline_experiment():
     # Get model ready for classification
     model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
     model_test = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
-    pickle.dump(model, open(os.path.join(session_directory, 'raw_data.pickle'), 'wb'))
 
     # save epochs
-    epochs = model.epochs_extractor(eeg)
-    pickle.dump(epochs, open(os.path.join(session_directory, 'epochs.pickle'), 'wb'))
+    model.epochs_extractor(eeg)
+    pickle.dump(model, open(os.path.join(session_directory, 'raw_model.pickle'), 'wb'))
 
     # train model and classify
-    model.offline_training(eeg=eeg, model_type='csp_lda')
-    features = model_test.offline_training(eeg=eeg, model_type='simple_svm')
-    print(features.shape)
-    pickle.dump(features, open(os.path.join(session_directory, 'features.pickle'), 'wb'))
-
+    model.offline_training(model_type='simple_svm')
     # Dump the MLModel
-    pickle.dump(model, open(os.path.join(session_directory, 'model.pickle'), 'wb'))
+    pickle.dump(model, open(os.path.join(session_directory, 'trained_model.pickle'), 'wb'))
+
+    # cross-validation
+    scores = model_test.cross_val()
+    (print(f"Prediction rate is: {np.mean(scores)*100}%"))
 
 
 if __name__ == '__main__':
