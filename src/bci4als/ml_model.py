@@ -38,13 +38,13 @@ class MLModel:
         self.features_mat = None
         self.epochs = None
 
-    def offline_training(self, epochs, model_type: str = 'csp_lda'):
+    def offline_training(self, model_type: str = 'csp_lda'):
 
         if model_type.lower() == 'csp_lda':
-            self._csp_lda(epochs)
+            self._csp_lda()
 
         elif model_type.lower() == 'simple_svm':
-            self._simple_svm(epochs)
+            self._simple_svm()
 
         else:
             raise NotImplementedError(f'The model type `{model_type}` is not implemented yet')
@@ -75,30 +75,6 @@ class MLModel:
         fs = self.epochs.info['sfreq']
         bandpower_features = self.extract_bandpower(data, bands, fs)
         self.features_mat = bandpower_features
-        self.clf = svm.SVC(decision_function_shape='ovo')
-        self.clf.fit(bandpower_features, self.labels)
-
-    @staticmethod
-    def extract_bandpower(data: NDArray, bands: np.matrix, fs: int):
-        bp_mat_final = pd.DataFrame()
-        for band in bands:
-            bp_mat = np.zeros((data.shape[0], data.shape[1]))
-            fmin = band.item(0)
-            fmax = band.item(1)
-            f, pxx = scipy.signal.periodogram(data, fs=fs)
-            ind_min = scipy.argmax(f > fmin) - 1
-            ind_max = scipy.argmax(f > fmax) - 1
-            bp_func = lambda power_elec: scipy.trapz(power_elec[ind_min: ind_max], f[ind_min: ind_max])
-            for trial in range(data.shape[0]):
-                bp_per_elec_per_trial = []
-                power = pxx[trial]
-                for elec in range(data.shape[1]):
-                    bp_per_elec_per_trial.append([bp_func(power[elec])])
-                bp_mat[trial] = np.asarray(bp_per_elec_per_trial).T
-            bp_concat = pd.DataFrame(bp_mat)
-            bp_mat_final = pd.concat([bp_mat_final, bp_concat], axis=1)
-        bp_mat_final.transpose().reset_index(drop=True).transpose()
-        return bp_mat_final
 
     def _csp_lda(self):
         print('Training CSP & LDA model')
@@ -126,7 +102,8 @@ class MLModel:
         return prediction
 
     def cross_val(self):
-        self.clf = svm.SVC(kernel='linear', random_state=42)
+        self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+        self.clf.fit(self.features_mat, self.labels)
         scores = cross_val_score(self.clf, self.features_mat, self.labels, cv=2)
         return scores
 
@@ -141,3 +118,24 @@ class MLModel:
         # Fit with trials and labels
         self._csp_lda(eeg)
 
+    @staticmethod
+    def extract_bandpower(data: NDArray, bands: np.matrix, fs: int):
+        bp_mat_final = pd.DataFrame()
+        for band in bands:
+            bp_mat = np.zeros((data.shape[0], data.shape[1]))
+            fmin = band.item(0)
+            fmax = band.item(1)
+            f, pxx = scipy.signal.periodogram(data, fs=fs)
+            ind_min = scipy.argmax(f > fmin) - 1
+            ind_max = scipy.argmax(f > fmax) - 1
+            bp_func = lambda power_elec: scipy.trapz(power_elec[ind_min: ind_max], f[ind_min: ind_max])
+            for trial in range(data.shape[0]):
+                bp_per_elec_per_trial = []
+                power = pxx[trial]
+                for elec in range(data.shape[1]):
+                    bp_per_elec_per_trial.append([bp_func(power[elec])])
+                bp_mat[trial] = np.asarray(bp_per_elec_per_trial).T
+            bp_concat = pd.DataFrame(bp_mat)
+            bp_mat_final = pd.concat([bp_mat_final, bp_concat], axis=1)
+        bp_mat_final.transpose().reset_index(drop=True).transpose()
+        return bp_mat_final

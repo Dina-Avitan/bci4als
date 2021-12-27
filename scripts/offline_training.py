@@ -11,7 +11,7 @@ def offline_experiment():
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2
     eeg = EEG(board_id=SYNTHETIC_BOARD)
-    exp = OfflineExperiment(eeg=eeg, num_trials=40, trial_length=3,
+    exp = OfflineExperiment(eeg=eeg, num_trials=10, trial_length=3,
                             full_screen=True, audio=False)
     channel_removed = []
     trials, labels = exp.run()
