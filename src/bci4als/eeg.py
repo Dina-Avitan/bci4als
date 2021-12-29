@@ -25,7 +25,7 @@ class EEG:
     headset : str
         the headset name we use, will be presented in the metadata
     """
-    def __init__(self, board_id: int = BoardIds.CYTON_DAISY_BOARD.value, ip_port: int = 6677,
+    def __init__(self, config_json_converted, board_id: int = BoardIds.CYTON_DAISY_BOARD.value, ip_port: int = 6677,
                  serial_port: Optional[str] = None, headset: str = "avi13"):
 
         # Board Id and Headset Name
@@ -39,6 +39,7 @@ class EEG:
         self.params.headset = headset
         self.params.board_id = board_id
         self.board = BoardShim(board_id, self.params)
+        self.configurations = config_json_converted
 
         # Other Params
         self.sfreq = self.board.get_sampling_rate(board_id)
@@ -78,6 +79,7 @@ class EEG:
     def on(self):
         """Turn EEG On"""
         self.board.prepare_session()
+        self.board.config_board(self.configurations)
         self.board.start_stream()
 
     def off(self):

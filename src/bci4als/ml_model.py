@@ -13,7 +13,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
 import scipy
 from sklearn import svm
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, cross_val_predict
 from abc import abstractstaticmethod
 
 class MLModel:
@@ -103,8 +103,7 @@ class MLModel:
 
     def cross_val(self):
         self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-        self.clf.fit(self.features_mat, self.labels)
-        scores = cross_val_score(self.clf, self.features_mat, self.labels, cv=2)
+        scores = cross_val_score(self.clf, self.features_mat, self.labels, cv=5)
         return scores
 
     def partial_fit(self, eeg, X: NDArray, y: int):

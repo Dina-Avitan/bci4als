@@ -6,8 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import svm
 from sklearn.feature_selection import SelectKBest,chi2
-
-
+import scipy
 def playground():
     # load eeg data
     root = Tk()
@@ -17,7 +16,14 @@ def playground():
     raw_model.offline_training(model_type='simple_svm')
     scores = raw_model.cross_val()
     (print(f"Prediction rate is: {np.mean(scores)*100}%"))
-    visualize_svm(raw_model.features_mat.to_numpy(), raw_model.labels)
+    raw_model.features_mat = SelectKBest(chi2, k=8).fit_transform(raw_model.features_mat, raw_model.labels)
+    scores = raw_model.cross_val()
+    (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+    raw_model.features_mat = scipy.stats.zscore(raw_model.features_mat)
+    scores = raw_model.cross_val()
+    (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+    visualize_svm(raw_model.features_mat, raw_model.labels)
+
 
 def visualize_svm(X, y):
     X = SelectKBest(chi2, k=2).fit_transform(X, y)

@@ -1,4 +1,4 @@
-Experiment datetime: 2021-12-21 11:50:03.973111
+Experiment datetime: 2021-12-29 10:55:58.235829
 
 EEG Channels:
 *************
@@ -19,8 +19,8 @@ Channel 13: FC5
 Experiment Data
 ***************
 Experiment Type: Offline
-Num of trials: 20
-Trials length: 5
+Num of trials: 10
+Trials length: 3
 Cue length: 0.25
-Labels Enum: {0: 'right', 1: 'left', 2: 'idle', 3: 'tongue', 4: 'legs'}
+Labels Enum: {0: 'right', 1: 'left', 2: 'idle'}
 Skip After: None
