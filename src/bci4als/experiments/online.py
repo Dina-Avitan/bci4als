@@ -20,6 +20,7 @@ from mne_features.feature_extraction import extract_features
 from nptyping import NDArray
 from psychopy import visual, core
 from sklearn.preprocessing import StandardScaler
+import pandas as pd
 
 
 class OnlineExperiment(Experiment):
@@ -57,12 +58,10 @@ class OnlineExperiment(Experiment):
         self.co_learning: bool = co_learning
 
         # audio
-        # self.audio_success_path = os.path.join(os.path.dirname(__file__), 'audio', f'success.mp3')
-        self.audio_success_path = r'C:\Users\noam\PycharmProjects\bci_4_als\src\bci4als\audio\success.mp3'
-        # todo: make this path generic
+        self.audio_success_path = os.path.join(r'../src/bci4als/', 'audio', f'success.mp3')  # hope its generic
 
         # Model configs
-        self.labels_enum: Dict[str, int] = {'right': 0, 'left': 1, 'idle': 2, 'tongue': 3, 'legs': 4}
+        self.labels_enum: Dict[str, int] = {'right': 0, 'left': 1, 'idle': 2}  # , 'tongue': 3, 'legs': 4}
         self.label_dict: Dict[int, str] = dict([(value, key) for key, value in self.labels_enum.items()])
         self.num_labels: int = len(self.labels_enum)
 
@@ -126,6 +125,7 @@ class OnlineExperiment(Experiment):
 
             if stim == prediction:
                 num_tries = 0  # if successful, reset num_tries to 0
+                print(num_tries)
             else:
                 num_tries += 1
 
@@ -159,8 +159,48 @@ class OnlineExperiment(Experiment):
         # Filter the data (band-pass only)
         data = mne.filter.filter_data(data, l_freq=8, h_freq=30, sfreq=self.eeg.sfreq, verbose=False)
 
-        # Laplacian
-        data = self.eeg.laplacian(data, self.eeg.get_board_names())
+        # Laplacian  < cannot work like this...
+        # data = self.eeg.laplacian(data, self.eeg.get_board_names())
+
+        # Normalize
+        scaler = StandardScaler()
+        data = scaler.fit_transform(data.T).T
+
+        # Extract features
+        funcs_params = {'pow_freq_bands__freq_bands': np.array([8, 10, 12.5, 30])}
+        selected_funcs = ['pow_freq_bands', 'variance']
+        X = extract_features(data[np.newaxis], self.eeg.sfreq, selected_funcs, funcs_params)[0]
+
+        return X
+
+    def online_pipe_new(self, data: NDArray) -> NDArray:
+        """
+        The method get the data as ndarray with dimensions of (n_channels, n_samples).
+        The method returns the features for the given data.
+        :param data: ndarray with the shape (n_channels, n_samples)
+        :return: ndarray with the shape of (1, n_features)
+        """
+        # Prepare the data to MNE functions
+        data = data.astype(np.float64)
+
+        # Filter the data (band-pass only)
+        data = mne.filter.filter_data(data, l_freq=8, h_freq=30, sfreq=self.eeg.sfreq, verbose=False)
+        trials = []
+        data = self.eeg.get_board_data()
+        ch_names = self.eeg.get_board_names()
+        ch_channels = self.eeg.get_board_channels()
+        durations, labels = self.eeg.extract_trials(data)
+
+        # Assert the labels
+        assert self.labels == labels, 'The labels are not equals to the extracted labels'
+
+        # Append each
+        for start, end in durations:
+            trial = data[ch_channels, start:end]
+            trials.append(pd.DataFrame(data=trial.T, columns=ch_names))
+
+        # Laplacian  < cannot work like this...
+        # data = self.eeg.laplacian(data, self.eeg.get_board_names())
 
         # Normalize
         scaler = StandardScaler()

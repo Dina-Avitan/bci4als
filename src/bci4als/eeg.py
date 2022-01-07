@@ -288,7 +288,7 @@ class EEG:
         The data need to be (n_channel, n_samples)
         :return:
         """
-        channel_removed = ['Cz','CP5','FC5','FC1','CP5','FC2','FC6','CP2','CP6']
+        channel_removed = ['Cz', 'CP5', 'FC5', 'FC1', 'CP5', 'FC2', 'FC6', 'CP2', 'CP6']
         for trial in range(len(data)):
             # C3
             data[trial]['C3'] -= (data[trial]['Cz'] + data[trial]['FC5'] + data[trial]['FC1'] +
@@ -297,5 +297,5 @@ class EEG:
             # C4
             data[trial]['C4'] -= (data[trial]['Cz'] + data[trial]['FC2'] + data[trial]['FC6'] +
                                 data[trial]['CP2'] + data[trial]['CP6']) / 5
-            data[trial] = data[trial].drop(columns=['Cz','CP5','FC5','FC1','CP5','FC2','FC6','CP2','CP6'])
+            data[trial] = data[trial].drop(columns=['Cz', 'CP5', 'FC5', 'FC1', 'CP5', 'FC2', 'FC6', 'CP2', 'CP6'])
         return data, channel_removed
