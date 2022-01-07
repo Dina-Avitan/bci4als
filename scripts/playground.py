@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 from sklearn import svm
 from sklearn.feature_selection import SelectKBest,chi2
 import scipy
+import scipy.io
+from bci4als import ml_model
+
+
 def playground():
     # load eeg data
     root = Tk()
@@ -24,6 +28,18 @@ def playground():
     (print(f"Prediction rate is: {np.mean(scores)*100}%"))
     visualize_svm(raw_model.features_mat, raw_model.labels)
 
+
+def load_eeg():
+    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    data = EEG['EEG']
+    labels = trainingVec['trainingVec']
+    bands = np.matrix('8 12; 16 22; 30 35')
+    fs = 500
+    data = np.moveaxis(data, [0, 1, 2], [2, 1, 0])
+    bandpower_features = ml_model.MLModel.extract_bandpower(data, bands, fs)
+
+    # features_mat = bandpower_features
 
 def visualize_svm(X, y):
     X = SelectKBest(chi2, k=2).fit_transform(X, y)
@@ -71,4 +87,5 @@ def visualize_svm(X, y):
     plt.show()
 
 if __name__ == '__main__':
-    playground()
+    # playground()
+    load_eeg()
