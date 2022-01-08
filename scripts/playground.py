@@ -1,14 +1,24 @@
 # This script is meant to load models and allow the user to change hyper-parameters
 # so you could fine-tune the real offline_training class
+import math
 from tkinter import filedialog, Tk
+
+import mne_features.feature_extraction
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import svm
-from sklearn.feature_selection import SelectKBest,chi2
+from sklearn.feature_selection import SelectKBest,chi2, mutual_info_classif
 import scipy
 import scipy.io
 from bci4als import ml_model
+from sklearn import svm
+from sklearn.model_selection import cross_val_score
+import math
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.feature_selection import SelectFromModel
+from sklearn.svm import LinearSVC
 
 
 def playground():
@@ -33,13 +43,53 @@ def load_eeg():
     EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
     trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
     data = EEG['EEG']
-    labels = trainingVec['trainingVec']
+    labels = np.ravel(trainingVec['trainingVec'].T)
     bands = np.matrix('8 12; 16 22; 30 35')
     fs = 500
-    data = np.moveaxis(data, [0, 1, 2], [2, 1, 0])
-    bandpower_features = ml_model.MLModel.extract_bandpower(data, bands, fs)
+    scaler = StandardScaler()
+    #  data should be trails X electrodes X samples.
+    data = np.transpose(data, (2, 0, 1))
+    clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+    max_score = 1
+    for feat_num in range(1, 27):
+        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=1, relative=False)
+        bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.1, relative=True)
+        bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
 
-    # features_mat = bandpower_features
+        bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old), axis=1)
+        bandpower_features_wtf = SelectKBest(chi2, k=feat_num).fit_transform(bandpower_features_wtf, labels)
+        scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
+        # (print(f"Prediction rate is: {np.mean(scores_mix)*100}%"))
+
+        bandpower_features_new = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_new.shape[0]))).fit_transform(bandpower_features_new, labels)
+        scores = cross_val_score(clf, bandpower_features_new, labels, cv=8)
+        # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+
+        bandpower_features_old = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_old.shape[0]))).fit_transform(bandpower_features_old, labels)
+        scores = cross_val_score(clf, bandpower_features_old, labels, cv=8)
+        # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+
+        bandpower_features_rel = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_new.shape[0]))).fit_transform(bandpower_features_rel, labels)
+        scores = cross_val_score(clf, bandpower_features_rel, labels, cv=8)
+        # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+
+        if np.mean(scores_mix)*100 > max_score:
+            max_score = np.mean(scores_mix)*100
+            feat_num_max = feat_num
+    print(max_score, feat_num_max)
+
+    # bandpower_features = scaler.fit_transform(bandpower_features.T).T
+    # clf = ExtraTreesClassifier(n_estimators=50)
+    # clf = clf.fit(bandpower_features, labels)
+    # # clf.feature_importances_
+    # lsvc = LinearSVC(C=0.01, penalty="l1", dual=False).fit(bandpower_features, labels)
+    # # model = SelectFromModel(lsvc, prefit=True)
+    # model = SelectFromModel(clf, prefit=True)
+    # X_new = model.transform(bandpower_features)
+    # clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+    # scores = cross_val_score(clf, X_new, labels, cv=5)
+    # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+
 
 def visualize_svm(X, y):
     X = SelectKBest(chi2, k=2).fit_transform(X, y)

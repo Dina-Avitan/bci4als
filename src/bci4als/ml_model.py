@@ -138,3 +138,91 @@ class MLModel:
             bp_mat_final = pd.concat([bp_mat_final, bp_concat], axis=1)
         bp_mat_final.transpose().reset_index(drop=True).transpose()
         return bp_mat_final
+
+    @staticmethod
+    def bandpower(data, bands, sf, window_sec=None, relative=False):
+        """Compute the average power of the signal x in a specific frequency band.
+
+        Parameters
+        ----------
+        data : 3d-array
+            Input signal in the time-domain. trial X electrode X sample
+        sf : float
+            Sampling frequency of the data.
+        bands : ndarray
+            Lower and upper frequencies of the band of interest.
+        window_sec : float
+            Length of each window in seconds.
+            If None, window_sec = (1 / min(band)) * 2
+        relative : boolean
+            If True, return the relative power (= divided by the total power of the signal).
+            If False (default), return the absolute power.
+
+        Return
+        ------
+        bp : float
+            Absolute or relative band power.
+        """
+        from scipy.signal import welch
+        from scipy.integrate import simps
+        freq_res = sf/data.shape[2]
+        feature_mat = []
+        for band in bands:
+            band = np.ravel(band)
+            low, high = band
+            bp_per_elec = []
+            bp_per_epoch = []
+            # Define window length
+            if window_sec is not None:
+                nperseg = window_sec * sf
+            else:
+                nperseg = (2 / low) * sf
+            # Compute the modified periodogram (Welch)
+            freqs, psd = welch(data, sf, nperseg=nperseg)
+            # Find closest indices of band in frequency vector
+            idx_band = np.logical_and(freqs >= low, freqs <= high)
+
+            for epoch_idx in range(data.shape[0]):
+                for elec_idx in range(data.shape[1]):
+                    # Integral approximation of the spectrum using Simpson's rule.
+                    bp = simps(psd[epoch_idx][elec_idx][idx_band], dx=freq_res)
+                    if relative:
+                        bp /= simps(psd[epoch_idx][elec_idx], dx=freq_res)
+                    bp_per_elec.append(bp)
+                if epoch_idx == 0:
+                    bp_per_epoch = bp_per_elec
+                else:
+                    bp_per_epoch = np.vstack((bp_per_epoch, bp_per_elec))
+                bp_per_elec = []
+            if all(band == np.ravel(bands[0])):
+                feature_mat = bp_per_epoch
+            else:
+                feature_mat = np.concatenate((feature_mat, bp_per_epoch), axis=1)
+            bp_per_epoch = []
+
+        return feature_mat
+    @staticmethod
+    def hjorthMobility(data):
+        """
+        Returns the Hjorth Mobility of the given data
+
+        Parameters
+        ----------
+        data: array_like
+
+        Returns
+        -------
+        float
+            The resulting value
+        """
+        bp_per_elec = []
+        bp_per_epoch = []
+        for epoch_idx in range(data.shape[0]):
+            for elec_idx in range(data.shape[1]):
+                bp_per_elec.append(np.sqrt(np.var(np.gradient(data[epoch_idx][elec_idx])) / np.var(data[epoch_idx][elec_idx])))
+            if epoch_idx == 0:
+                bp_per_epoch = bp_per_elec
+            else:
+                bp_per_epoch = np.vstack((bp_per_epoch, bp_per_elec))
+            bp_per_elec = []
+        return bp_per_epoch
