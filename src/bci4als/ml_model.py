@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 from typing import List
@@ -14,7 +15,7 @@ from sklearn.pipeline import Pipeline
 import scipy
 from sklearn import svm
 from sklearn.model_selection import cross_val_score, cross_val_predict
-from abc import abstractstaticmethod
+from sklearn.feature_selection import SelectKBest, mutual_info_classif
 
 class MLModel:
     """
@@ -73,8 +74,10 @@ class MLModel:
         data = self.epochs.get_data()
         bands = np.matrix('8 12; 16 22; 30 35')
         fs = self.epochs.info['sfreq']
-        bandpower_features = self.extract_bandpower(data, bands, fs)
-        self.features_mat = bandpower_features
+        bandpower_features = self.bandpower(data, bands, fs, window_sec=1, relative=False)
+        hjorth_complexity = self.hjorthMobility(data)
+        self.features_mat = np.concatenate((hjorth_complexity, bandpower_features), axis=1)
+        self.features_mat = scipy.stats.zscore(self.features_mat)
 
     def _csp_lda(self):
         print('Training CSP & LDA model')
@@ -102,9 +105,16 @@ class MLModel:
         return prediction
 
     def cross_val(self):
-        self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-        scores = cross_val_score(self.clf, self.features_mat, self.labels, cv=5)
-        return scores
+        max_score = 1
+        self.clf = svm.SVC(decision_function_shape='ovo', kernel='poly')
+        for feat_num in range(1, int(math.sqrt(self.features_mat.shape[0]))):
+            features_mat_selected = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(self.features_mat, self.labels)
+            scores_mix = cross_val_score(self.clf, features_mat_selected, self.labels, cv=8)
+            if np.mean(scores_mix) * 100 > max_score:
+                max_score = np.mean(scores_mix) * 100
+                feat_num_max = feat_num
+            print(np.mean(scores_mix) * 100)
+        return max_score, feat_num_max
 
     def partial_fit(self, eeg, X: NDArray, y: int):
 
@@ -201,6 +211,7 @@ class MLModel:
             bp_per_epoch = []
 
         return feature_mat
+
     @staticmethod
     def hjorthMobility(data):
         """

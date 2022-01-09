@@ -3,22 +3,16 @@
 import math
 from tkinter import filedialog, Tk
 
-import mne_features.feature_extraction
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import svm
-from sklearn.feature_selection import SelectKBest,chi2, mutual_info_classif
+from sklearn.feature_selection import SelectKBest, chi2, mutual_info_classif
 import scipy
 import scipy.io
 from bci4als import ml_model
 from sklearn import svm
 from sklearn.model_selection import cross_val_score
-import math
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.feature_selection import SelectFromModel
-from sklearn.svm import LinearSVC
+
 
 
 def playground():
@@ -29,14 +23,7 @@ def playground():
     raw_model = pd.read_pickle(fr'{file_path}')
     raw_model.offline_training(model_type='simple_svm')
     scores = raw_model.cross_val()
-    (print(f"Prediction rate is: {np.mean(scores)*100}%"))
-    raw_model.features_mat = SelectKBest(chi2, k=8).fit_transform(raw_model.features_mat, raw_model.labels)
-    scores = raw_model.cross_val()
-    (print(f"Prediction rate is: {np.mean(scores)*100}%"))
-    raw_model.features_mat = scipy.stats.zscore(raw_model.features_mat)
-    scores = raw_model.cross_val()
-    (print(f"Prediction rate is: {np.mean(scores)*100}%"))
-    visualize_svm(raw_model.features_mat, raw_model.labels)
+    (print(f"Prediction rate is: {scores}%"))
 
 
 def load_eeg():
@@ -46,39 +33,53 @@ def load_eeg():
     labels = np.ravel(trainingVec['trainingVec'].T)
     bands = np.matrix('8 12; 16 22; 30 35')
     fs = 500
-    scaler = StandardScaler()
     #  data should be trails X electrodes X samples.
     data = np.transpose(data, (2, 0, 1))
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
     max_score = 1
-    for feat_num in range(1, 27):
+    final_data = []
+    for trial in range(data.shape[0]):
+        # C4
+        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+                              data[trial][9]) / 4
+
+        # C4
+        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+                              data[trial][10]) / 4
+        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+        if trial == 0:
+            final_data = new_data[np.newaxis]
+        else:
+            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    data = final_data
+    for feat_num in range(1, 10):
         bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=1, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.1, relative=True)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
 
         bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old), axis=1)
-        bandpower_features_wtf = SelectKBest(chi2, k=feat_num).fit_transform(bandpower_features_wtf, labels)
+        bandpower_features_wtf = scipy.stats.zscore(bandpower_features_wtf)
+        bandpower_features_wtf = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
         scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
-        # (print(f"Prediction rate is: {np.mean(scores_mix)*100}%"))
+        (print(f"Prediction rate is: {np.mean(scores_mix)*100}%"))
 
-        bandpower_features_new = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_new.shape[0]))).fit_transform(bandpower_features_new, labels)
-        scores = cross_val_score(clf, bandpower_features_new, labels, cv=8)
-        # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
-
-        bandpower_features_old = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_old.shape[0]))).fit_transform(bandpower_features_old, labels)
-        scores = cross_val_score(clf, bandpower_features_old, labels, cv=8)
-        # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
-
-        bandpower_features_rel = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_new.shape[0]))).fit_transform(bandpower_features_rel, labels)
-        scores = cross_val_score(clf, bandpower_features_rel, labels, cv=8)
-        # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+        # bandpower_features_new = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_new.shape[0]))).fit_transform(bandpower_features_new, labels)
+        # scores = cross_val_score(clf, bandpower_features_new, labels, cv=8)
+        # # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+        #
+        # bandpower_features_old = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_old.shape[0]))).fit_transform(bandpower_features_old, labels)
+        # scores = cross_val_score(clf, bandpower_features_old, labels, cv=8)
+        # # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+        #
+        # bandpower_features_rel = SelectKBest(chi2, k=int(math.sqrt(bandpower_features_new.shape[0]))).fit_transform(bandpower_features_rel, labels)
+        # scores = cross_val_score(clf, bandpower_features_rel, labels, cv=8)
+        # # (print(f"Prediction rate is: {np.mean(scores)*100}%"))
 
         if np.mean(scores_mix)*100 > max_score:
             max_score = np.mean(scores_mix)*100
             feat_num_max = feat_num
     print(max_score, feat_num_max)
 
-    # bandpower_features = scaler.fit_transform(bandpower_features.T).T
     # clf = ExtraTreesClassifier(n_estimators=50)
     # clf = clf.fit(bandpower_features, labels)
     # # clf.feature_importances_
@@ -137,5 +138,5 @@ def visualize_svm(X, y):
     plt.show()
 
 if __name__ == '__main__':
-    # playground()
-    load_eeg()
+    playground()
+    # load_eeg()
