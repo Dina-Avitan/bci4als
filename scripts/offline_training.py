@@ -14,17 +14,21 @@ def offline_experiment():
     configurations = ''.join([''.join(f"x{str(i + 1)}0{gain['6']}0110X") for i in range(8)] +
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E', 'R']] + [
                 ''.join(f"x{i}131000X") for i in ['T', 'Y', 'U', 'I']])
-    eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
-    exp = OfflineExperiment(eeg=eeg, num_trials=120, trial_length=5,
+    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
+    exp = OfflineExperiment(eeg=eeg, num_trials=30, trial_length=1,
                             full_screen=True, audio=False)
     channel_removed = []
     trials, labels = exp.run()
     session_directory = exp.session_directory
-
+    # remove outliers
+    for i in range(len(trials)):
+        std_col = trials[i].std(axis=0)
+        channel_removed += std_col[std_col == 0].index.tolist() # add outliers (bad electrodes) to remove
     # do Laplacian filter
     pickle.dump(trials, open(os.path.join(session_directory, 'trials.pickle'), 'wb'))
-    trials, channel_removed = eeg.laplacian(trials)
-    # channel_removed = channel_removed.append() ##TODO: NOAM WILL MAKE OUTLIER CHANNELS DISAPPEAR
+    trials, to_removed = eeg.laplacian(trials)
+    # Delete repetitive elements in the list
+    channel_removed = list(set(channel_removed + to_removed))
 
     # Get model ready for classification
     model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)

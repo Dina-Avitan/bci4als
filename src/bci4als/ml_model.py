@@ -78,6 +78,24 @@ class MLModel:
         hjorth_complexity = self.hjorthMobility(data)
         self.features_mat = np.concatenate((hjorth_complexity, bandpower_features), axis=1)
         self.features_mat = scipy.stats.zscore(self.features_mat)
+        # trials rejection
+        self.features_mat = self.trials_rejection(self.features_mat)
+
+
+    @staticmethod
+    def trials_rejection(features_mat):
+        to_remove = []
+        nan_col = np.isnan(features_mat).sum(axis=0)  # remove features with None values
+        add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
+        to_remove += add_remove
+
+        func = lambda x: x > 2  # remove features with extreme values - 2 std over the mean
+        Z_bool = func(features_mat).sum(axis=0)
+        add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
+        to_remove += add_remove
+        np.delete(features_mat, to_remove, axis=1)
+        return features_mat
+
 
     def _csp_lda(self):
         print('Training CSP & LDA model')
