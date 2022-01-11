@@ -38,6 +38,7 @@ class MLModel:
         self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')  # maybe make more dynamic to user
         self.features_mat = None
         self.epochs = None
+        self.raw_trials = None
 
     def offline_training(self, model_type: str = 'csp_lda'):
 
@@ -66,7 +67,7 @@ class MLModel:
         epochs.set_montage(montage)
 
         # Apply band-pass filter
-        epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+        epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
         self.epochs = epochs
 
     def _simple_svm(self):
@@ -80,6 +81,7 @@ class MLModel:
         self.features_mat = scipy.stats.zscore(self.features_mat)
         # trials rejection
         self.features_mat = self.trials_rejection(self.features_mat)
+        # model creation for the online prediction
         self.clf.fit(self.features_mat, self.labels)
 
     @staticmethod
@@ -115,18 +117,26 @@ class MLModel:
         data = data.astype(np.float64)
         # Filter the data ( band-pass only)
         data = mne.filter.filter_data(data, l_freq=7, h_freq=30, sfreq=eeg.sfreq, verbose=False)
+        # LaPlacian filter
+        data, channels_removed = eeg.laplacian(data)
         # maybe make feature extraction static and avoid replicating this shit
         bands = np.matrix('8 12; 16 22; 30 35')
         fs = self.epochs.info['sfreq']
         bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=1, relative=False)
         hjorth_complexity = self.hjorthMobility(data[np.newaxis])
-        features_mat_test = np.concatenate((hjorth_complexity, bandpower_features), axis=1)
+        # combine features
+        # features_mat_test = np.concatenate((hjorth_complexity, bandpower_features), axis=0)
+        features_mat_test = bandpower_features  # remove this line on updated model
+        # normalize
         features_mat_test = scipy.stats.zscore(features_mat_test)
         # trials rejection
-        features_mat_test = self.trials_rejection(features_mat_test)
+        # features_mat_test = self.trials_rejection(features_mat_test)
         # Predict
         # prediction = self.clf.predict(data[np.newaxis])[0]
-        prediction = self.clf.predict(features_mat_test)
+        if self.clf is None:
+            self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')  # maybe make more dynamic to user
+            self.clf.fit(self.features_mat, self.labels)  # create new model (not necessary in new recordings)
+        prediction = self.clf.predict(features_mat_test.reshape(1, -1))
         return prediction
 
     def cross_val(self):
@@ -231,7 +241,10 @@ class MLModel:
             if all(band == np.ravel(bands[0])):
                 feature_mat = bp_per_epoch
             else:
-                feature_mat = np.concatenate((feature_mat, bp_per_epoch), axis=1)
+                if isinstance(feature_mat, list) or feature_mat.shape.__len__() == 1:  # for test
+                    feature_mat = np.concatenate((feature_mat, bp_per_epoch), axis=0)
+                else:
+                    feature_mat = np.concatenate((feature_mat, bp_per_epoch), axis=1)
             bp_per_epoch = []
 
         return feature_mat

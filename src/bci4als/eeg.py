@@ -281,6 +281,7 @@ class EEG:
     def laplacian(data: NDArray):
         """
         The method execute laplacian on the raw data.
+        board names are : ['CP2', 'FC2', 'CP6', 'C4', 'C3', 'CP5', 'FC1', 'CP1', 'Cz', 'FC6', 'T8', 'T7', 'FC5']
         The laplacian was computed as follows:
             1. C3 = C3 - mean(Cz + F3 + P3 + T3)
             2. C4 = C4 - mean(Cz + F4 + P4 + T4)
@@ -288,14 +289,28 @@ class EEG:
         The data need to be (n_channel, n_samples)
         :return:
         """
+        names_dict = {'CP2': 0, 'FC2': 1, 'CP6': 2, 'C4': 3, 'C3': 4, 'CP5': 5, 'FC1': 6, 'CP1': 7, 'Cz': 8, 'FC6': 9,
+                      'T8': 10, 'T7': 11, 'FC5': 12}
         channel_removed = ['Cz', 'CP5', 'FC5', 'FC1', 'CP5', 'FC2', 'FC6', 'CP2', 'CP6']
-        for trial in range(len(data)):
+        if data.shape.__len__() == 3:
+            for trial in range(len(data)):
+                # C3
+                data[trial]['C3'] -= (data[trial]['Cz'] + data[trial]['FC5'] + data[trial]['FC1'] +
+                                    data[trial]['CP5'] + data[trial]['CP1']) / 5
+
+                # C4
+                data[trial]['C4'] -= (data[trial]['Cz'] + data[trial]['FC2'] + data[trial]['FC6'] +
+                                    data[trial]['CP2'] + data[trial]['CP6']) / 5
+                data[trial] = data[trial].drop(columns=['Cz', 'CP5', 'FC5', 'FC1', 'CP5', 'FC2', 'FC6', 'CP2', 'CP6'])
+        else:
             # C3
-            data[trial]['C3'] -= (data[trial]['Cz'] + data[trial]['FC5'] + data[trial]['FC1'] +
-                                data[trial]['CP5'] + data[trial]['CP1']) / 5
+            data[names_dict['C3']] -= (data[names_dict['Cz']] + data[names_dict['FC5']] + data[names_dict['FC1']] +
+                                  data[names_dict['CP5']] + data[names_dict['CP1']]) / 5
 
             # C4
-            data[trial]['C4'] -= (data[trial]['Cz'] + data[trial]['FC2'] + data[trial]['FC6'] +
-                                data[trial]['CP2'] + data[trial]['CP6']) / 5
-            data[trial] = data[trial].drop(columns=['Cz', 'CP5', 'FC5', 'FC1', 'CP5', 'FC2', 'FC6', 'CP2', 'CP6'])
+            data[names_dict['C4']] -= (data[names_dict['Cz']] + data[names_dict['FC2']] + data[names_dict['FC6']] +
+                                  data[names_dict['CP2']] + data[names_dict['CP6']]) / 5
+            data = np.delete(data, [names_dict['Cz'], names_dict['CP5'], names_dict['FC5'], names_dict['FC1'],
+                                      names_dict['CP5'], names_dict['FC2'], names_dict['FC6'], names_dict['CP2'],
+                                      names_dict['CP6']], axis=0)
         return data, channel_removed
