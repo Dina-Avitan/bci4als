@@ -45,7 +45,7 @@ def offline_experiment():
     # cross-validation
     scores = model.cross_val()
     (print(f"Prediction rate is: {np.mean(scores)*100}%"))
-
+    #harta
 
 if __name__ == '__main__':
 
