@@ -103,16 +103,17 @@ def plot_spectrogram(spec_dict,elec):
     plt.show()
 
 
-fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\2\\trials.pickle'
-fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\2\\raw_model.pickle'
-fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\2\\trained_model.pickle'
+fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\5\\trials.pickle'
+fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\5\\raw_model.pickle'
+fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\5\\trained_model.pickle'
 trials = pickle.load(open(fpath1, 'rb'))
 raw_model = pickle.load(open(fpath2, 'rb'))
 traind_model = pickle.load(open(fpath3, 'rb'))
-#create_spectrogram(raw_model,elec=0)
-#plot_raw_elec(trials)
-plot_psd_classes(raw_model, classes = [2] ,elec = 0,show_std = True,fmin = 1, fmax = 70)
-#raw_model.plot(scalings="auto", clipping=None)
+create_spectrogram(raw_model,elec=1)
+plot_raw_elec(trials,range_time = 1)
+plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 1, fmax = 70)
+# plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 1,show_std = False,fmin = 1, fmax = 70)
+# #raw_model.plot(scalings="auto", clipping=None)
 #trials[1].shape[1]
 # for i in range(len(trials)):
 #     # sum_col = trials[i].sum(axis=0)
