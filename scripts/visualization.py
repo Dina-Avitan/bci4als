@@ -45,8 +45,8 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
         plt.plot(f,mean[elec],color=colors[i_cls], label = class_name[i_cls])
         if show_std == True:
             std = np.ndarray.std(Pxx, axis=0)
-            res1 = mean[elec] - std[elec]
-            res2 = mean[elec] + std[elec]
+            res1 = mean[elec] - std[elec]/2
+            res2 = mean[elec] + std[elec]/2
             plt.plot(f,res1,color=std_colors[i_cls])
             plt.plot(f, res2, color=std_colors[i_cls])
             plt.fill_between(f,mean[elec], res1,color=std_colors[i_cls])
@@ -109,7 +109,9 @@ fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\2\\trained_model.pi
 trials = pickle.load(open(fpath1, 'rb'))
 raw_model = pickle.load(open(fpath2, 'rb'))
 traind_model = pickle.load(open(fpath3, 'rb'))
-create_spectrogram(raw_model,elec=0)
+#create_spectrogram(raw_model,elec=0)
+#plot_raw_elec(trials)
+plot_psd_classes(raw_model, classes = [2] ,elec = 0,show_std = True,fmin = 1, fmax = 70)
 #raw_model.plot(scalings="auto", clipping=None)
 #trials[1].shape[1]
 # for i in range(len(trials)):
