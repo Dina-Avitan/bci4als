@@ -130,3 +130,4 @@ plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 
 #     z_mat = scipy.stats.zscore(a, axis=0, ddof=0, nan_policy='omit')
 #     Z_bool = func(z_mat).sum(axis=0)
 #     add_remove = np.where(np.in1d(Z_bool,not 0))
+# roy roy
