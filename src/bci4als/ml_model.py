@@ -38,6 +38,7 @@ class MLModel:
         self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')  # maybe make more dynamic to user
         self.features_mat = None
         self.epochs = None
+        self.raw_trials = None
 
     def offline_training(self, model_type: str = 'csp_lda'):
 
@@ -66,7 +67,7 @@ class MLModel:
         epochs.set_montage(montage)
 
         # Apply band-pass filter
-        epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+        epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
         self.epochs = epochs
 
     def _simple_svm(self):
