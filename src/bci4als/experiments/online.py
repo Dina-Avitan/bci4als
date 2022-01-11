@@ -105,6 +105,7 @@ class OnlineExperiment(Experiment):
             else:
                 # in normal mode, use the loaded model to make a prediction
                 prediction = self.model.online_predict(data, eeg=self.eeg)
+                prediction = int(prediction)
 
             # play sound if successful
             # todo: make this available to object params
