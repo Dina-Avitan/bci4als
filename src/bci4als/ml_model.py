@@ -35,7 +35,7 @@ class MLModel:
         self.labels: List[int] = labels
         self.channel_removed: List[str] = channel_removed
         self.debug = True
-        self.clf = None
+        self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')  # maybe make more dynamic to user
         self.features_mat = None
         self.epochs = None
 
@@ -80,7 +80,7 @@ class MLModel:
         self.features_mat = scipy.stats.zscore(self.features_mat)
         # trials rejection
         self.features_mat = self.trials_rejection(self.features_mat)
-
+        self.clf.fit(self.features_mat, self.labels)
 
     @staticmethod
     def trials_rejection(features_mat):
@@ -113,18 +113,24 @@ class MLModel:
     def online_predict(self, data: NDArray, eeg: EEG):
         # Prepare the data to MNE functions
         data = data.astype(np.float64)
-
         # Filter the data ( band-pass only)
         data = mne.filter.filter_data(data, l_freq=7, h_freq=30, sfreq=eeg.sfreq, verbose=False)
-
+        # maybe make feature extraction static and avoid replicating this shit
+        bands = np.matrix('8 12; 16 22; 30 35')
+        fs = self.epochs.info['sfreq']
+        bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=1, relative=False)
+        hjorth_complexity = self.hjorthMobility(data[np.newaxis])
+        features_mat_test = np.concatenate((hjorth_complexity, bandpower_features), axis=1)
+        features_mat_test = scipy.stats.zscore(features_mat_test)
+        # trials rejection
+        features_mat_test = self.trials_rejection(features_mat_test)
         # Predict
-        prediction = self.clf.predict(data[np.newaxis])[0]
-
+        # prediction = self.clf.predict(data[np.newaxis])[0]
+        prediction = self.clf.predict(features_mat_test)
         return prediction
 
     def cross_val(self):
         max_score = 1
-        self.clf = svm.SVC(decision_function_shape='ovo', kernel='poly')
         for feat_num in range(1, int(math.sqrt(self.features_mat.shape[0]))):
             features_mat_selected = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(self.features_mat, self.labels)
             scores_mix = cross_val_score(self.clf, features_mat_selected, self.labels, cv=8)
