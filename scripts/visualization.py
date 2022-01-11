@@ -45,8 +45,8 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
         plt.plot(f,mean[elec],color=colors[i_cls], label = class_name[i_cls])
         if show_std == True:
             std = np.ndarray.std(Pxx, axis=0)
-            res1 = mean[elec] - std[elec]
-            res2 = mean[elec] + std[elec]
+            res1 = mean[elec] - std[elec]/2
+            res2 = mean[elec] + std[elec]/2
             plt.plot(f,res1,color=std_colors[i_cls])
             plt.plot(f, res2, color=std_colors[i_cls])
             plt.fill_between(f,mean[elec], res1,color=std_colors[i_cls])
@@ -103,14 +103,17 @@ def plot_spectrogram(spec_dict,elec):
     plt.show()
 
 
-fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\2\\trials.pickle'
-fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\2\\raw_model.pickle'
-fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\2\\trained_model.pickle'
+fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\5\\trials.pickle'
+fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\5\\raw_model.pickle'
+fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\5\\trained_model.pickle'
 trials = pickle.load(open(fpath1, 'rb'))
 raw_model = pickle.load(open(fpath2, 'rb'))
 traind_model = pickle.load(open(fpath3, 'rb'))
-create_spectrogram(raw_model,elec=0)
-#raw_model.plot(scalings="auto", clipping=None)
+create_spectrogram(raw_model,elec=1)
+plot_raw_elec(trials,range_time = 1)
+plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 1, fmax = 70)
+# plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 1,show_std = False,fmin = 1, fmax = 70)
+# #raw_model.plot(scalings="auto", clipping=None)
 #trials[1].shape[1]
 # for i in range(len(trials)):
 #     # sum_col = trials[i].sum(axis=0)
@@ -127,3 +130,4 @@ create_spectrogram(raw_model,elec=0)
 #     z_mat = scipy.stats.zscore(a, axis=0, ddof=0, nan_policy='omit')
 #     Z_bool = func(z_mat).sum(axis=0)
 #     add_remove = np.where(np.in1d(Z_bool,not 0))
+# roy roy
