@@ -23,13 +23,13 @@ def offline_experiment():
     # remove outliers
     for i in range(len(trials)):
         std_col = trials[i].std(axis=0)
-        channel_removed += std_col[std_col == 0].index.tolist() # add outliers (bad electrodes) to remove
+        channel_removed += std_col[std_col == 0].index.tolist()  # add outliers (bad electrodes) to remove
     # do Laplacian filter
     pickle.dump(trials, open(os.path.join(session_directory, 'trials.pickle'), 'wb'))
-    trials, to_removed = eeg.laplacian(trials)
+    trials, to_remove = eeg.laplacian(trials)
     # Delete repetitive elements in the list
     #channel_removed = list(set(channel_removed + to_removed))
-    channel_removed = to_removed
+    channel_removed = to_remove
 
     # Get model ready for classification
     model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
