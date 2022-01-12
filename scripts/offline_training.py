@@ -16,7 +16,7 @@ def offline_experiment():
                 ''.join(f"x{i}131000X") for i in ['T', 'Y', 'U', 'I']])
 
     eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
-    exp = OfflineExperiment(eeg=eeg, num_trials=10, trial_length=1, full_screen=True, audio=False)
+    exp = OfflineExperiment(eeg=eeg, num_trials=24, trial_length=1, full_screen=True, audio=False)
     channel_removed = []
     trials, labels = exp.run()
     session_directory = exp.session_directory
@@ -50,7 +50,7 @@ def offline_experiment():
 
     # cross-validation
     scores = model.cross_val()
-    (print(f"Prediction rate is: {np.mean(scores)*100}%"))
+    (print(f"Prediction rate is: {np.mean(scores[0])*100}%"))
     #harta
 
 if __name__ == '__main__':

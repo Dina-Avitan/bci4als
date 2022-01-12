@@ -311,6 +311,6 @@ class EEG:
             data[names_dict['C4']] -= (data[names_dict['FC2']] + data[names_dict['FC6']] +
                                   data[names_dict['CP2']] + data[names_dict['CP6']]) / 4
             data = np.delete(data, [names_dict['CP5'], names_dict['FC5'], names_dict['FC1'],
-                                      names_dict['CP5'], names_dict['FC2'], names_dict['FC6'], names_dict['CP2'],
+                                      names_dict['CP1'], names_dict['FC2'], names_dict['FC6'], names_dict['CP2'],
                                       names_dict['CP6']], axis=0)
         return data, channel_removed

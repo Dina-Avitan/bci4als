@@ -16,6 +16,7 @@ from bci4als import ml_model
 from sklearn import svm
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 
 def playground():
@@ -26,69 +27,73 @@ def playground():
     raw_model = pd.read_pickle(fr'{file_path}')
     raw_model.offline_training(model_type='simple_svm')
     scores = raw_model.cross_val()
-    (print(f"Prediction rate is: {scores}%"))
+    (print(f"Prediction rate is: {scores[0]}%"))
 
 
 def load_eeg():
-    fs = 125
+    fs = 500
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
 
-    # # Ofir's data
-    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    # data = EEG['EEG']
-    # labels = np.ravel(trainingVec['trainingVec'].T)
-    #  # data should be trails X electrodes X samples.
-    # data = np.transpose(data, (2, 0, 1))
-    #
-    # final_data = []
-    # for trial in range(data.shape[0]):
-    #     # C4
-    #     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-    #                           data[trial][9]) / 4
-    #
-    #     # C4
-    #     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-    #                           data[trial][10]) / 4
-    #     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-    #     if trial == 0:
-    #         final_data = new_data[np.newaxis]
-    #     else:
-    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
-    # data = final_data
+    # Ofir's data
+    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    data = EEG['EEG']
+    labels = np.ravel(trainingVec['trainingVec'].T)
+     # data should be trails X electrodes X samples.
+    data = np.transpose(data, (2, 0, 1))
+
+    final_data = []
+
+    for trial in range(data.shape[0]):
+        # C4
+        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+                              data[trial][9]) / 4
+
+        # C4
+        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+                              data[trial][10]) / 4
+        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+        if trial == 0:
+            final_data = new_data[np.newaxis]
+        else:
+            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    data = final_data
 
     # Our data
     # data1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\2\raw_model.pickle')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\7\raw_model.pickle')
+    # data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\7\raw_model.pickle')
     # data = np.concatenate((data1.epochs.get_data()[:, :, :550], data2.epochs.get_data()[:, :, :550]), axis=0)
     # labels = np.concatenate((data1.labels,data2.labels), axis=0)
+    #
+    # labels = data2.labels
+    # data = data2.epochs.get_data()
 
-    labels = data2.labels
-    data = data2.epochs.get_data()
-
-    # ICA which does not work
-    # for d in range(len(data2)):
+    # # ICA which does not work
+    # for d in range(len(data)):
     #     if d == 0:
-    #         data = sklearn.decomposition.FastICA(n_components=5).fit_transform(data2[d][:, :830].T).T[np.newaxis]
+    #         data_ica = sklearn.decomposition.FastICA(n_components=data.shape[0],max_iter=400).fit_transform(data[d, :, :].T).T[np.newaxis]
     #     else:
-    #         data = np.vstack((data, sklearn.decomposition.FastICA(n_components=5).fit_transform(data2[d][:, :830].T).
+    #         data_ica = np.vstack((data_ica, sklearn.decomposition.FastICA(n_components=data.shape[0],max_iter=400).fit_transform(data[d,:, :].T).
     #                           T[np.newaxis]))
+    # data = data_ica
+    #
 
     # # Assemble a classifier
     lda = LinearDiscriminantAnalysis()
     csp = CSP(n_components=4, reg=None, log=False, norm_trace=False, transform_into='average_power', cov_est='epoch')
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
 
-
     for feat_num in range(1, int(math.sqrt(data.shape[0]))):
-        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=False)
+        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=True)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
 
         bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old, csp_features, bandpower_features_rel), axis=1)
-        bandpower_features_wtf = scipy.stats.zscore(bandpower_features_wtf)
+        scaler = StandardScaler()
+        scaler.fit(bandpower_features_wtf)
+        scaler.transform(bandpower_features_wtf)
         bandpower_features_wtf = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
         scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
         (print(f"Prediction rate is: {np.mean(scores_mix)*100}%"))

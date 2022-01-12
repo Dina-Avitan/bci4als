@@ -3,6 +3,7 @@ import os
 import pickle
 from typing import List
 import mne
+import numpy
 import pandas as pd
 from bci4als.eeg import EEG
 import numpy as np
@@ -16,6 +17,7 @@ import scipy
 from sklearn import svm
 from sklearn.model_selection import cross_val_score, cross_val_predict
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
+from sklearn.preprocessing import StandardScaler
 
 class MLModel:
     """
@@ -39,6 +41,8 @@ class MLModel:
         self.features_mat = None
         self.epochs = None
         self.raw_trials = None
+        self.select_features = None
+        self.scaler = StandardScaler()
 
     def offline_training(self, model_type: str = 'csp_lda'):
 
@@ -75,13 +79,20 @@ class MLModel:
         data = self.epochs.get_data()
         bands = np.matrix('8 12; 16 22; 30 35')
         fs = self.epochs.info['sfreq']
-        bandpower_features = self.bandpower(data, bands, fs, window_sec=1, relative=False)
+        bandpower_features = self.bandpower(data, bands, fs, window_sec=0.9, relative=False)
         hjorth_complexity = self.hjorthMobility(data)
         self.features_mat = np.concatenate((hjorth_complexity, bandpower_features), axis=1)
-        self.features_mat = scipy.stats.zscore(self.features_mat)
-        # trials rejection
+        # Normalize
+        self.scaler.fit(self.features_mat)
+        self.scaler.transform(self.features_mat)
+        # trial rejection
         self.features_mat = self.trials_rejection(self.features_mat)
+        score, feature_num = self.cross_val()  # get best feature number
         # model creation for the online prediction
+        self.select_features = SelectKBest(mutual_info_classif, k=feature_num).fit(self.features_mat, self.labels)
+        # extract best features
+        self.features_mat = self.select_features.transform(self.features_mat)
+        # Prepare for online classification
         self.clf.fit(self.features_mat, self.labels)
 
     @staticmethod
@@ -116,27 +127,27 @@ class MLModel:
         # Prepare the data to MNE functions
         data = data.astype(np.float64)
         # Filter the data ( band-pass only)
-        data = mne.filter.filter_data(data, l_freq=7, h_freq=30, sfreq=eeg.sfreq, verbose=False)
+        data = mne.filter.filter_data(data, l_freq=1, h_freq=40, sfreq=eeg.sfreq, verbose=False)
         # LaPlacian filter
         data, channels_removed = eeg.laplacian(data)
         # maybe make feature extraction static and avoid replicating this shit
         bands = np.matrix('8 12; 16 22; 30 35')
-        fs = self.epochs.info['sfreq']
-        bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=1, relative=False)
+        fs = eeg.sfreq
+        bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.9, relative=False)
         hjorth_complexity = self.hjorthMobility(data[np.newaxis])
         # combine features
-        # features_mat_test = np.concatenate((hjorth_complexity, bandpower_features), axis=0)
-        features_mat_test = bandpower_features  # remove this line on updated model
-        # normalize
-        features_mat_test = scipy.stats.zscore(features_mat_test)
-        # trials rejection
+        features_mat_test = np.concatenate((hjorth_complexity, bandpower_features), axis=0)
+        # Normalize
+        features_mat_test = self.scaler.transform(features_mat_test[numpy.newaxis])
+        # Trials rejection
         # features_mat_test = self.trials_rejection(features_mat_test)
-        # Predict
-        # prediction = self.clf.predict(data[np.newaxis])[0]
         if self.clf is None:
             self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')  # maybe make more dynamic to user
             self.clf.fit(self.features_mat, self.labels)  # create new model (not necessary in new recordings)
-        prediction = self.clf.predict(features_mat_test.reshape(1, -1))
+        # select features on test set
+        features_mat_test = self.select_features.transform(features_mat_test)
+        # Predict
+        prediction = self.clf.predict(features_mat_test)
         return prediction
 
     def cross_val(self):
@@ -147,7 +158,6 @@ class MLModel:
             if np.mean(scores_mix) * 100 > max_score:
                 max_score = np.mean(scores_mix) * 100
                 feat_num_max = feat_num
-            print(np.mean(scores_mix) * 100)
         return max_score, feat_num_max
 
     def partial_fit(self, eeg, X: NDArray, y: int):
