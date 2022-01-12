@@ -16,7 +16,7 @@ def run_experiment(model_path: str):
     configurations = ''.join([''.join(f"x{str(i + 1)}0{gain['6']}0110X") for i in range(8)] +
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E', 'R']] + [
                 ''.join(f"x{i}131000X") for i in ['T', 'Y', 'U', 'I']])
-    eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
+    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
 
     exp = OnlineExperiment(eeg=eeg, model=model, num_trials=10, buffer_time=4, threshold=3, skip_after=3,
                            co_learning=False, debug=False)
@@ -26,7 +26,7 @@ def run_experiment(model_path: str):
 
 if __name__ == '__main__':
 
-    model_path = r'../recordings/noam/3/trained_model.pickle'
+    model_path = r'../recordings/noam/7/trained_model.pickle'
     # model_path = None  # use if synthetic
     run_experiment(model_path=model_path)
 

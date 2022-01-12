@@ -28,7 +28,8 @@ def offline_experiment():
     pickle.dump(trials, open(os.path.join(session_directory, 'trials.pickle'), 'wb'))
     trials, to_removed = eeg.laplacian(trials)
     # Delete repetitive elements in the list
-    channel_removed = list(set(channel_removed + to_removed))
+    #channel_removed = list(set(channel_removed + to_removed))
+    channel_removed = to_removed
 
     # Get model ready for classification
     model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)

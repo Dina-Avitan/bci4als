@@ -17,7 +17,6 @@ from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
 
 
-
 def playground():
     # load eeg data
     root = Tk()
@@ -133,5 +132,5 @@ def visualize_svm(X, y):
     plt.show()
 
 if __name__ == '__main__':
-    # playground()
-    load_eeg()
+    playground()
+    #load_eeg()
