@@ -61,7 +61,10 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
 
 
 
-def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
+
+#def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
+
+def create_spectrogram(raw_model,elec=0, nwindow=50, noverlap=10, nperseg=50,nfft = 125):
     sr = raw_model.epochs.info['sfreq']
     elec = (raw_model.epochs.ch_names[elec],elec)
     spec_dict ={}
@@ -93,6 +96,7 @@ def plot_spectrogram(spec_dict,elec):
     # hide tick and tick label of the big axes
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     plt.grid(False)
+
     plt.title('Elec: ' + f'{elec[0]}', fontsize=20,x = 0.4 , y = 1)
     for i, ax in enumerate(axs.flat):
         im = ax.pcolormesh(spec_dict['t'],spec_dict['f'] , spec_dict[str(i)][elec[1]], shading='auto',cmap = 'jet')
@@ -115,6 +119,26 @@ plot_raw_elec(trials,range_time = 1)
 # plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 1,show_std = False,fmin = 1, fmax = 70)
 # #raw_model.plot(scalings="auto", clipping=None)
 #trials[1].shape[1]
+
+    # plt.title('Elec: ' + f'{elec[0]}', fontsize=20)
+    # for i, ax in enumerate(axs.flat):
+    #     ax.pcolormesh(spec_dict['t'],spec_dict['f'] , spec_dict[str(i)][elec[1]], shading='auto',cmap = 'jet')
+    #     ax.set_title(class_name[i])
+    # plt.setp(axs[-1, :], xlabel='Time [sec]')
+    # plt.setp(axs[:, 0], ylabel='Frequency [Hz]')
+    # plt.show()
+
+
+fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trials.pickle'
+fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\raw_model.pickle'
+fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trained_model.pickle'
+trials = pickle.load(open(fpath1, 'rb'))
+raw_model = pickle.load(open(fpath2, 'rb'))
+traind_model = pickle.load(open(fpath3, 'rb'))
+create_spectrogram(raw_model,elec=1)
+#raw_model.plot(scalings="auto", clipping=None)
+trials[0].shape[1]
+
 # for i in range(len(trials)):
 #     # sum_col = trials[i].sum(axis=0)
 #     # sum_col[sum_col == 0].index.tolist()
@@ -130,4 +154,6 @@ plot_raw_elec(trials,range_time = 1)
 #     z_mat = scipy.stats.zscore(a, axis=0, ddof=0, nan_policy='omit')
 #     Z_bool = func(z_mat).sum(axis=0)
 #     add_remove = np.where(np.in1d(Z_bool,not 0))
+
 # roy roy
+# noam
