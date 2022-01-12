@@ -15,8 +15,8 @@ def offline_experiment():
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E', 'R']] + [
                 ''.join(f"x{i}131000X") for i in ['T', 'Y', 'U', 'I']])
 
-    eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
-    exp = OfflineExperiment(eeg=eeg, num_trials=90, trial_length=7,full_screen=True, audio=False)
+    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
+    exp = OfflineExperiment(eeg=eeg, num_trials=10, trial_length=1, full_screen=True, audio=False)
     channel_removed = []
     trials, labels = exp.run()
     session_directory = exp.session_directory
@@ -24,8 +24,13 @@ def offline_experiment():
     for i in range(len(trials)):
         std_col = trials[i].std(axis=0)
         channel_removed += std_col[std_col == 0].index.tolist()  # add outliers (bad electrodes) to remove
+
+    # get and save raw unfiltered data
+    unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])
+    unfiltered_model.epochs_extractor(eeg)
+    pickle.dump(unfiltered_model, open(os.path.join(session_directory, 'unfiltered_model.pickle'), 'wb'))
+
     # do Laplacian filter
-    pickle.dump(trials, open(os.path.join(session_directory, 'trials.pickle'), 'wb'))
     trials, to_remove = eeg.laplacian(trials)
     # Delete repetitive elements in the list
     #channel_removed = list(set(channel_removed + to_removed))
