@@ -68,7 +68,7 @@ def load_eeg():
 
     # Our data
     # data1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\2\raw_model.pickle')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\7\raw_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle')
     # data = np.concatenate((data1.epochs.get_data()[:, :, :550], data2.epochs.get_data()[:, :, :550]), axis=0)
     # labels = np.concatenate((data1.labels,data2.labels), axis=0)
     #
@@ -91,7 +91,7 @@ def load_eeg():
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
 
     for feat_num in range(1, int(math.sqrt(data.shape[0]))):
-        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=True)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
 
@@ -99,7 +99,8 @@ def load_eeg():
         scaler = StandardScaler()
         scaler.fit(bandpower_features_wtf)
         scaler.transform(bandpower_features_wtf)
-        bandpower_features_wtf = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=50, max_features=9)).fit_transform(bandpower_features_wtf, labels)
+        # bandpower_features_wtf = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=50, max_features=9)).fit_transform(bandpower_features_wtf, labels)
+        bandpower_features_wtf = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
         print(bandpower_features_wtf.shape)
         scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
         (print(f"Prediction rate is: {np.mean(scores_mix)*100}%"))

@@ -64,7 +64,7 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
 
 #def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
 
-def create_spectrogram(raw_model,elec=0, nwindow=50, noverlap=10, nperseg=50,nfft = 125):
+def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
     sr = raw_model.epochs.info['sfreq']
     elec = (raw_model.epochs.ch_names[elec],elec)
     spec_dict ={}
@@ -99,7 +99,7 @@ def plot_spectrogram(spec_dict,elec):
 
     plt.title('Elec: ' + f'{elec[0]}', fontsize=20,x = 0.4 , y = 1)
     for i, ax in enumerate(axs.flat):
-        im = ax.pcolormesh(spec_dict['t'],spec_dict['f'] , spec_dict[str(i)][elec[1]], shading='auto',cmap = 'jet')
+        im = ax.pcolormesh(spec_dict['t'],spec_dict['f'] , spec_dict[str(i)][elec[1]], shading='gouraud',cmap = 'jet')
         ax.set_title(class_name[i])
     plt.setp(axs[-1, :], xlabel='Time [sec]')
     plt.setp(axs[:, 0], ylabel='Frequency [Hz]')
@@ -107,14 +107,14 @@ def plot_spectrogram(spec_dict,elec):
     plt.show()
 
 
-fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trials.pickle'
-fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\raw_model.pickle'
-fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trained_model.pickle'
-trials = pickle.load(open(fpath1, 'rb'))
-raw_model = pickle.load(open(fpath2, 'rb'))
-traind_model = pickle.load(open(fpath3, 'rb'))
-create_spectrogram(raw_model,elec=1)
-plot_raw_elec(trials,range_time = 1)
+# fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trials.pickle'
+# fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\raw_model.pickle'
+# fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trained_model.pickle'
+# trials = pickle.load(open(fpath1, 'rb'))
+# raw_model = pickle.load(open(fpath2, 'rb'))
+# traind_model = pickle.load(open(fpath3, 'rb'))
+# create_spectrogram(raw_model,elec=1)
+# plot_raw_elec(trials,range_time = 1)
 # plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 1, fmax = 70)
 # plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 1,show_std = False,fmin = 1, fmax = 70)
 # #raw_model.plot(scalings="auto", clipping=None)
@@ -129,16 +129,18 @@ plot_raw_elec(trials,range_time = 1)
     # plt.show()
 
 
-fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trials.pickle'
-fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\raw_model.pickle'
-fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\7\\trained_model.pickle'
+fpath1 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle'
+fpath2 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\raw_model.pickle'
+#fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\8\\trained_model.pickle'
 trials = pickle.load(open(fpath1, 'rb'))
 raw_model = pickle.load(open(fpath2, 'rb'))
-traind_model = pickle.load(open(fpath3, 'rb'))
+#traind_model = pickle.load(open(fpath3, 'rb'))
 create_spectrogram(raw_model,elec=1)
+create_spectrogram(trials,elec=1)
+
 #raw_model.plot(scalings="auto", clipping=None)
 trials[0].shape[1]
-
+# create_spectrogram(trials,elec=10)
 # for i in range(len(trials)):
 #     # sum_col = trials[i].sum(axis=0)
 #     # sum_col[sum_col == 0].index.tolist()

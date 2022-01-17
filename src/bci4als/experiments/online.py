@@ -104,7 +104,7 @@ class OnlineExperiment(Experiment):
                 prediction = stim if np.random.rand() <= 2 / 3 else (stim + 1) % len(self.labels_enum)
             else:
                 # in normal mode, use the loaded model to make a prediction
-                prediction = self.model.online_predict(data, eeg=self.eeg)
+                prediction, test_features = self.model.online_predict(data, eeg=self.eeg)
                 prediction = int(prediction)
 
             # play sound if successful
@@ -116,7 +116,7 @@ class OnlineExperiment(Experiment):
 
             # if self.co_learning and (prediction == stim):
             if self.co_learning:
-                self.model.partial_fit(self.eeg, data, stim)
+                self.model.partial_fit(data, stim, test_features)
                 pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
 
             target_predictions.append((int(stim), int(prediction)))

@@ -148,7 +148,7 @@ class MLModel:
         features_mat_test = self.select_features.transform(features_mat_test)
         # Predict
         prediction = self.clf.predict(features_mat_test)
-        return prediction
+        return prediction, features_mat_test
 
     def cross_val(self):
         max_score = 1
@@ -160,7 +160,7 @@ class MLModel:
                 feat_num_max = feat_num
         return max_score, feat_num_max
 
-    def partial_fit(self, eeg, X: NDArray, y: int):
+    def partial_fit(self, X: NDArray, y: int, test_features):
 
         # Append X to trials
         self.trials.append(X)
@@ -168,8 +168,11 @@ class MLModel:
         # Append y to labels
         self.labels.append(y)
 
-        # Fit with trials and labels
-        self._csp_lda(eeg)
+        # update feature mat
+
+        # append to feature mat
+
+        # fit model again
 
     @staticmethod
     def extract_bandpower(data: NDArray, bands: np.matrix, fs: int):
