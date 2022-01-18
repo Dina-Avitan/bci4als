@@ -20,8 +20,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.feature_selection import SelectFromModel
-
-
+from itertools import permutations
+from mne import filter
 
 def playground():
     # load eeg data
@@ -38,8 +38,8 @@ def load_eeg():
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
-    # clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-    clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=(120), random_state=0, max_iter=800)
+    clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+    # clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=100, random_state=0, max_iter=400)
 
     # # Ofir's data
     # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
@@ -48,7 +48,7 @@ def load_eeg():
     # labels = np.ravel(trainingVec['trainingVec'].T)
     #  # data should be trails X electrodes X samples.
     # data = np.transpose(data, (2, 0, 1))
-    #
+
     # final_data = []
     #
     # for trial in range(data.shape[0]):
@@ -68,7 +68,7 @@ def load_eeg():
 
     # Our data
     # data1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\2\raw_model.pickle')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\raw_model.pickle')
     # data = np.concatenate((data1.epochs.get_data()[:, :, :550], data2.epochs.get_data()[:, :, :550]), axis=0)
     # labels = np.concatenate((data1.labels,data2.labels), axis=0)
     #
@@ -84,21 +84,20 @@ def load_eeg():
     #                           T[np.newaxis]))
     # data = data_ica
 
-
     # # Assemble a classifier
     lda = LinearDiscriminantAnalysis()
     csp = CSP(n_components=4, reg=None, log=False, norm_trace=False, transform_into='average_power', cov_est='epoch')
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
 
     for feat_num in range(1, int(math.sqrt(data.shape[0]))):
-        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=False)
+        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=True)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
 
         bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old, csp_features, bandpower_features_rel), axis=1)
         scaler = StandardScaler()
         scaler.fit(bandpower_features_wtf)
-        scaler.transform(bandpower_features_wtf)
+        bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
         # bandpower_features_wtf = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=50, max_features=9)).fit_transform(bandpower_features_wtf, labels)
         bandpower_features_wtf = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
         print(bandpower_features_wtf.shape)
@@ -110,6 +109,49 @@ def load_eeg():
             feat_num_max = feat_num
     print(max_score, feat_num_max)
 
+def permutation_func():
+    fs = 125
+    bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    max_score = 1
+    clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle')
+    labels = data2.labels
+    combinations = list(permutations(range(11)))
+    counter = 1
+    for perm_c3 in combinations:
+        data = data2.epochs.get_data()
+        final_data = []
+        # perm_c3 = (0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 7)
+        perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
+        for trial in range(data.shape[0]):
+            # C3
+            data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
+                                  data[trial][perm_c3[4]]) / 4
+
+            # C4
+            data[trial][perm_c3[5]] -= (data[trial][perm_c3[6]] + data[trial][perm_c3[7]] + data[trial][perm_c3[8]] +
+                                  data[trial][perm_c3[9]]) / 4
+            new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
+            if trial == 0:
+                final_data = new_data[np.newaxis]
+            else:
+                final_data = np.vstack((final_data, new_data[np.newaxis]))
+        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=False)
+        bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
+        bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old), axis=1)
+        scaler = StandardScaler()
+        scaler.fit(bandpower_features_wtf)
+        scaler.transform(bandpower_features_wtf)
+        bandpower_features_wtf = SelectKBest(mutual_info_classif, k=9).fit_transform(bandpower_features_wtf, labels)
+        scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
+        if counter % 100000 == 0:
+            print(counter)
+        print(np.mean(scores_mix)*100)
+        if np.mean(scores_mix)*100 > max_score:
+            max_score = np.mean(scores_mix)*100
+            feat_num_max = 9
+            print(f"Prediction rate is: {np.mean(scores_mix) * 100}%")
+            print(max_score, feat_num_max, perm_c3)
 
 def visualize_svm(X, y):
     X = SelectKBest(chi2, k=2).fit_transform(X, y)
@@ -158,4 +200,5 @@ def visualize_svm(X, y):
 
 if __name__ == '__main__':
     # playground()
-    load_eeg()
+    # load_eeg()
+    permutation_func()
