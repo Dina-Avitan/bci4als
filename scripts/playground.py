@@ -1,5 +1,6 @@
 # This script is meant to load models and allow the user to change hyper-parameters
 # so you could fine-tune the real offline_training class
+import copy
 import math
 from tkinter import filedialog, Tk
 
@@ -114,15 +115,16 @@ def permutation_func():
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
     labels = data2.labels
     combinations = list(permutations(range(11)))
     counter = 1
     for perm_c3 in combinations:
-        data = data2.epochs.get_data()
+        data = copy.deepcopy(data2.epochs.get_data())
         final_data = []
-        # perm_c3 = (0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 7)
-        perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
+        perm_c3 = (0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 7)
+        # perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
+        new_data = []
         for trial in range(data.shape[0]):
             # C3
             data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
@@ -136,6 +138,8 @@ def permutation_func():
                 final_data = new_data[np.newaxis]
             else:
                 final_data = np.vstack((final_data, new_data[np.newaxis]))
+        data = final_data
+        print(data.shape)
         bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.7, relative=False)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
         bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old), axis=1)
