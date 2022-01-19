@@ -18,6 +18,8 @@ from sklearn import svm
 from sklearn.model_selection import cross_val_score, cross_val_predict
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from sklearn.preprocessing import StandardScaler
+from numba import njit
+
 
 class MLModel:
     """
@@ -287,3 +289,177 @@ class MLModel:
                 bp_per_epoch = np.vstack((bp_per_epoch, bp_per_elec))
             bp_per_elec = []
         return bp_per_epoch
+
+    @staticmethod
+    # Lempel-Ziv Complexity
+    def LZC(data, threshold=None):
+        """
+        Returns the Lempel-Ziv Complexity (LZ76) of the given data.
+
+        Parameters
+        ----------
+        data: array_like
+            The signal.
+        theshold: numeric, optional
+            A number use to binarize the signal. The values of the signal above
+            threshold will be converted to 1 and the rest to 0. By default, the
+            median of the data.
+
+        References
+        ----------
+        .. [1] M. Aboy, R. Hornero, D. Abasolo and D. Alvarez, "Interpretation of
+               the Lempel-Ziv Complexity Measure in the Context of Biomedical
+               Signal Analysis," in IEEE Transactions on Biomedical Engineering,
+               vol. 53, no.11, pp. 2282-2288, Nov. 2006.
+        """
+
+        lzc_per_elec = []
+        lzc_per_epoch = []
+
+        for epoch_idx in range(data.shape[0]):
+            for elec_idx in range(data.shape[1]):
+                if not threshold:
+                    threshold = np.median(data[epoch_idx, elec_idx])
+                n = len(data[epoch_idx, elec_idx])
+                sequence = MLModel._binarize(data[epoch_idx, elec_idx], threshold)
+                n_seq = len(sequence)
+                complexity = 1
+                q0 = 1
+                qSize = 1
+                sqi = 0
+                where = 0
+                while q0 + qSize < n_seq:
+                    # If we are checking the end of the sequence we just need to look at
+                    # the last element
+                    if sqi != q0 - 1:
+                        contained, where = MLModel._isSubsequenceContained(sequence[q0:q0 + qSize],
+                                                                           sequence[sqi:q0 + qSize - 1])
+                    else:
+                        contained = sequence[q0 + qSize] == sequence[q0 + qSize - 1]
+
+                    # If Q is contained in sq~, we increase the size of q
+                    if contained:
+                        qSize += 1
+                        sqi = where
+                    # If Q is not contained the complexity is increased by 1 and reset Q
+                    else:
+                        q0 += qSize
+                        qSize = 1
+                        complexity += 1
+                        sqi = 0
+                b = n / np.log2(n)
+                lzc_per_elec.append(complexity / b)
+            if epoch_idx == 0:
+                lzc_per_epoch = lzc_per_elec
+            else:
+                lzc_per_epoch = np.vstack((lzc_per_epoch, lzc_per_elec))
+            lzc_per_elec = []
+        return lzc_per_epoch
+
+    @staticmethod
+    def _binarize(data, threshold):
+        if not isinstance(data, np.ndarray):
+            data = np.array(data)
+
+        return np.array(data > threshold, np.uint8)
+
+    @staticmethod
+    @njit
+    def _isSubsequenceContained(subSequence, sequence):  # pragma: no cover
+        """
+        Checks if the subSequence is into the sequence and returns a tuple that
+        informs if the subsequence is into and where. Return examples: (True, 7),
+        (False, -1).
+        """
+        n = len(sequence)
+        m = len(subSequence)
+
+        for i in range(n - m + 1):
+            equal = True
+            for j in range(m):
+                equal = subSequence[j] == sequence[i + j]
+                if not equal:
+                    break
+
+            if equal:
+                return True, i
+
+        return False, -1
+
+    @staticmethod
+    def DFA(data, fit_degree=1, min_window_size=4, max_window_size=None,
+            fskip=1, max_n_windows_sizes=None):
+        """
+        Applies Detrended Fluctuation Analysis algorithm to the given data.
+
+        Parameters
+        ----------
+        data: array_like
+            The signal.
+        fit_degree: int, optional
+            Degree of the polynomial used to model de local trends. Default: 1.
+        min_window_size: int, optional
+            Size of the smallest window that will be used. Default: 4.
+        max_window_size: int, optional
+            Size of the biggest window that will be used. Default: signalSize//4
+        fskip: float, optional
+            Fraction of the window that will be skiped in each iteration for each
+            window size. Default: 1
+        max_n_windows_sizes: int, optional
+            Maximum number of window sizes that will be used. The final number can
+            be smaller once the repeated values are removed
+            Default: log2(size)
+
+        Returns
+        -------
+        float
+            The resulting value
+        """
+        # Arguments handling
+        dfa_per_elec = []
+        dfa_per_epoch = []
+        for epoch_idx in range(data.shape[0]):
+            for elec_idx in range(data.shape[1]):
+                size = len(data[epoch_idx, elec_idx])
+                if not max_window_size:
+                    max_window_size = size // 4
+
+                # Detrended data
+                Y = np.cumsum(data - np.mean(data[epoch_idx, elec_idx]))
+
+                # Windows sizes
+                if not max_n_windows_sizes:
+                    max_n_windows_sizes = int(np.round(np.log2(size)))
+
+                ns = np.unique(
+                    np.geomspace(min_window_size, max_window_size, max_n_windows_sizes,
+                                 dtype=int))
+
+                # Fluctuations for each window size
+                F = np.zeros(ns.size)
+
+                # Loop for each window size
+                for indexF, n in enumerate(ns):
+                    itskip = max(int(fskip * n), 1)
+                    nWindows = int(np.ceil((size - n + 1) / itskip))
+
+                    # Aux x
+                    x = np.arange(n)
+
+                    y = np.array([Y[i * itskip:i * itskip + n] for i in range(0, nWindows)])
+                    c = np.polynomial.polynomial.polyfit(x, y.T, fit_degree)
+                    yn = np.polynomial.polynomial.polyval(x, c)
+
+                    F[indexF] = np.mean(np.sqrt(np.sum((y - yn) ** 2, axis=1) / n))
+
+                alpha = np.polyfit(np.log(ns), np.log(F), 1)[0]
+
+                if np.isnan(alpha):  # pragma: no cover
+                    alpha = 0
+                dfa_per_elec.append(alpha)
+            if epoch_idx == 0:
+                dfa_per_epoch = dfa_per_elec
+            else:
+                dfa_per_epoch = np.vstack((dfa_per_epoch, dfa_per_elec))
+            dfa_per_elec = []
+        return dfa_per_epoch

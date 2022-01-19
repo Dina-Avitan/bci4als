@@ -4,6 +4,7 @@ import copy
 import math
 from tkinter import filedialog, Tk
 
+import eeglib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -35,73 +36,68 @@ def playground():
 
 
 def load_eeg():
-    fs = 500
+    fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
     # clf = MLPClassifier(solver='adam', alpha=1e-4, hidden_layer_sizes=10, random_state=1, max_iter=700)
-    # clf = MLPClassifier(solver='lbfgs', alpha=1e-4, hidden_layer_sizes=500)
-
-    # Ofir's data
-    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    data = EEG['EEG']
-    labels = np.ravel(trainingVec['trainingVec'].T)
-     # data should be trails X electrodes X samples.
-    data = np.transpose(data, (2, 0, 1))
-
+    # clf = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=800)
     final_data = []
+    # permutations for laplace
+    # perm_ofir
+    # perm_c3 = (8, 2, 14, 7, 9, 4, 5, 3, 0, 10)
+    # perm our weird combo
+    perm_c3 = (0, 1, 2, 3, 7, 9, 4, 5, 6, 8, 10)
+    # perm_c3 = [8, 9, 6, 5, 3, 10, 2, 7, 4, 1, 0]
+
+    # # Ofir's data
+    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    # data = EEG['EEG']
+    # labels = np.ravel(trainingVec['trainingVec'].T)
+    #  # data should be trails X electrodes X samples.
+    # data = np.transpose(data, (2, 0, 1))
+
+    # Our data
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
+    labels = data2.labels
+    data = data2.epochs.get_data()
 
     for trial in range(data.shape[0]):
-        # C4
-        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-                              data[trial][9]) / 4
+        # C3
+        data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
+                                    data[trial][perm_c3[4]]) / 4
 
         # C4
-        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-                              data[trial][10]) / 4
-        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+        data[trial][perm_c3[5]] -= (data[trial][perm_c3[6]] + data[trial][perm_c3[7]] + data[trial][perm_c3[8]] +
+                                    data[trial][perm_c3[9]]) / 4
+
+        new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
         if trial == 0:
             final_data = new_data[np.newaxis]
         else:
             final_data = np.vstack((final_data, new_data[np.newaxis]))
     data = final_data
 
-    # Our data
-    # data1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\2\raw_model.pickle')
-    # data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\7\raw_model.pickle')
-    # data = np.concatenate((data1.epochs.get_data()[:, :, :550], data2.epochs.get_data()[:, :, :550]), axis=0)
-    # labels = np.concatenate((data1.labels,data2.labels), axis=0)
-    #
-    # labels = data2.labels
-    # data = data2.epochs.get_data()
-
-    # # ICA which does not work
-    # for d in range(len(data)):
-    #     if d == 0:
-    #         data_ica = sklearn.decomposition.FastICA().fit_transform(data[d, :, :].T).T[np.newaxis]
-    #     else:
-    #         data_ica = np.vstack((data_ica, sklearn.decomposition.FastICA(n_components=data.shape[0],max_iter=400).fit_transform(data[d,:, :].T).
-    #                           T[np.newaxis]))
-    # data = data_ica
-
-    # # Assemble a classifier
+    # # get csp features
     lda = LinearDiscriminantAnalysis()
     csp = CSP(n_components=4, reg=None, log=False, norm_trace=False, transform_into='average_power', cov_est='epoch')
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
-
     for feat_num in range(1, int(math.sqrt(data.shape[0]))):
         bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
+        # lzc_features = ml_model.MLModel.LZC(data)
+        # dfa_features = ml_model.MLModel.DFA(data)
 
-        bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old, csp_features, bandpower_features_rel), axis=1)
+        # add as much features as you like
+        bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_old, csp_features,
+                                                 bandpower_features_rel), axis=1)
         scaler = StandardScaler()
         scaler.fit(bandpower_features_wtf)
         bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
-        # bandpower_features_wtf = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=50, max_features=9)).fit_transform(bandpower_features_wtf, labels)
+        # bandpower_features_wtf = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).fit_transform(bandpower_features_wtf, labels)
         bandpower_features_wtf = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
-        print(bandpower_features_wtf.shape)
         scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
         (print(f"Prediction rate is: {np.mean(scores_mix)*100}%"))
 
@@ -125,7 +121,7 @@ def permutation_func():
         final_data = []
         # perm_c3 = (0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 7)
         # perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
-        perm_c3 = (0, 1, 2, 3, 7, 9, 4, 5, 6, 8, 10)
+        # perm_c3 = (0, 1, 2, 3, 7, 9, 4, 5, 6, 8, 10)
         # perm_c3 = [8, 9, 6, 5, 3, 10, 2, 7, 4, 1, 0]
         new_data = []
         # perm_c3 = list(reversed(perm_c3))
