@@ -79,9 +79,9 @@ class MLModel:
     def _simple_svm(self):
         # Extract spectral features
         data = self.epochs.get_data()
-        bands = np.matrix('8 12; 16 22; 30 35')
+        bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = self.epochs.info['sfreq']
-        bandpower_features = self.bandpower(data, bands, fs, window_sec=0.9, relative=False)
+        bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         hjorth_complexity = self.hjorthMobility(data)
         self.features_mat = np.concatenate((hjorth_complexity, bandpower_features), axis=1)
         # Normalize
@@ -133,9 +133,9 @@ class MLModel:
         # LaPlacian filter
         data, channels_removed = eeg.laplacian(data)
         # maybe make feature extraction static and avoid replicating this shit
-        bands = np.matrix('8 12; 16 22; 30 35')
+        bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = eeg.sfreq
-        bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.9, relative=False)
+        bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=False)
         hjorth_complexity = self.hjorthMobility(data[np.newaxis])
         # combine features
         features_mat_test = np.concatenate((hjorth_complexity, bandpower_features), axis=0)
@@ -162,13 +162,13 @@ class MLModel:
                 feat_num_max = feat_num
         return max_score, feat_num_max
 
-    def partial_fit(self, X: NDArray, y: int, test_features):
+    def partial_fit(self, X, y):
 
         # Append X to trials
-        self.trials.append(X)
+        [self.trials.append(trial) for trial in X]
 
         # Append y to labels
-        self.labels.append(y)
+        [self.labels.append(label) for label in y]
 
         # update feature mat
 
