@@ -88,6 +88,7 @@ class OnlineExperiment(Experiment):
         timer = core.Clock()
         target_predictions = []
         num_tries = 0
+        batch_stack = [[],[],[]]  # number of classes is number of empty lists
         while not feedback.stop:
             # increase num_tries by 1
             print(f"num tries {num_tries}")
@@ -114,13 +115,12 @@ class OnlineExperiment(Experiment):
                 if prediction == stim:
                     playsound.playsound(self.audio_success_path)
 
-            # if self.co_learning and (prediction == stim):
-            print(type(stim))
-            print(type(prediction))
-            if self.co_learning and prediction == stim:
-                self.model.partial_fit(data, stim, test_features)
-                pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
-
+            if self.co_learning and prediction == stim:  # maybe prediction doesnt have to be == stim
+                batch_stack[stim].append(data)
+                if all(batch_stack):
+                    data_batched = [batch_stack[0].pop(0), batch_stack[1].pop(0), batch_stack[2].pop(0)]
+                    self.model.partial_fit(data_batched, [0,1,2])
+                    pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
             target_predictions.append((int(stim), int(prediction)))
 
             # Reset the clock for the next buffer
@@ -135,9 +135,6 @@ class OnlineExperiment(Experiment):
             # Update the feedback according the prediction
             feedback.update(prediction, skip=(num_tries >= self.skip_after))
             # feedback.update(stim)  # For debugging purposes
-
-            # Update the model using partial-fit with the new EEG data
-            # self.model.partial_fit([x], [stim])  # todo: implement this with csp_lda
 
             # Debug
             print(f'Predict: {self.label_dict[prediction]}; '
