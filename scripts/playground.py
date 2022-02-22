@@ -109,7 +109,7 @@ def load_eeg():
     print(max_score, feat_num_max)
 
 def permutation_func():
-    fs = 250
+    fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')

@@ -15,6 +15,7 @@ from scipy import signal
 # from matplotlib import cm
 import scipy
 import scipy.io
+import pandas as pd
 def plot_raw_elec(trials, elec_name='all',range_time = 'all'):
     '''
     Args:
@@ -135,13 +136,13 @@ def plot_spectrogram(spec_dict,elec):
 
 # fpath1 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle'
 # fpath2 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\raw_model.pickle'
-fpath3 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\\roy\\2\\raw_model.pickle'
+#fpath3 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\\roy\\2\\raw_model.pickle'
 #trials = pickle.load(open(fpath3, 'rb'))
-raw_model = pickle.load(open(fpath3, 'rb'))
+#raw_model = pickle.load(open(fpath3, 'rb'))
 #traind_model = pickle.load(open(fpath3, 'rb'))
 
 #plot_raw_elec(trials,range_time = 1)
-create_spectrogram(raw_model,elec=1)
+#create_spectrogram(raw_model,elec=1)
 # create_spectrogram(trials,elec=1)
 
 #raw_model.plot(scalings="auto", clipping=None)
@@ -165,3 +166,9 @@ create_spectrogram(raw_model,elec=1)
 
 # roy roy
 # noam
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
+labels = data2.labels
+data = data2.epochs.get_data()
+# perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
+perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
+#for trial in range(data.shape[0]):
