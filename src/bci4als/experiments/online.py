@@ -115,7 +115,9 @@ class OnlineExperiment(Experiment):
                     playsound.playsound(self.audio_success_path)
 
             # if self.co_learning and (prediction == stim):
-            if self.co_learning:
+            print(type(stim))
+            print(type(prediction))
+            if self.co_learning and prediction == stim:
                 self.model.partial_fit(data, stim, test_features)
                 pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
 

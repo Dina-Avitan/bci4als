@@ -109,42 +109,43 @@ def plot_spectrogram(spec_dict,elec):
     plt.show()
 
  # Ofir's data
-EEG = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\EEG.mat')
-trainingVec = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\trainingVec.mat')
-data = EEG['EEG']
-labels = np.ravel(trainingVec['trainingVec'].T)
- # data should be trails X electrodes X samples.
-data = np.transpose(data, (2, 0, 1))
-
-final_data = []
-
-for trial in range(data.shape[0]):
-    # C4
-    data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-                          data[trial][9]) / 4
-
-    # C4
-    data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-                          data[trial][10]) / 4
-    new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-    if trial == 0:
-        final_data = new_data[np.newaxis]
-    else:
-        final_data = np.vstack((final_data, new_data[np.newaxis]))
-data = final_data
+# EEG = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\EEG.mat')
+# trainingVec = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\trainingVec.mat')
+# data = EEG['EEG']
+# labels = np.ravel(trainingVec['trainingVec'].T)
+#  # data should be trails X electrodes X samples.
+# data = np.transpose(data, (2, 0, 1))
+#
+# final_data = []
+#
+# for trial in range(data.shape[0]):
+#     # C4
+#     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+#                           data[trial][9]) / 4
+#
+#     # C4
+#     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+#                           data[trial][10]) / 4
+#     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+#     if trial == 0:
+#         final_data = new_data[np.newaxis]
+#     else:
+#         final_data = np.vstack((final_data, new_data[np.newaxis]))
+# data = final_data
 
 # fpath1 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle'
 # fpath2 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\raw_model.pickle'
-fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\noam\\8\\trials.pickle'
-trials = pickle.load(open(fpath3, 'rb'))
-# raw_model = pickle.load(open(fpath2, 'rb'))
+fpath3 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\\roy\\2\\raw_model.pickle'
+#trials = pickle.load(open(fpath3, 'rb'))
+raw_model = pickle.load(open(fpath3, 'rb'))
 #traind_model = pickle.load(open(fpath3, 'rb'))
-plot_raw_elec(trials,range_time = 1)
-# create_spectrogram(raw_model,elec=1)
+
+#plot_raw_elec(trials,range_time = 1)
+create_spectrogram(raw_model,elec=1)
 # create_spectrogram(trials,elec=1)
 
 #raw_model.plot(scalings="auto", clipping=None)
-trials[0].shape[1]
+#trials[0].shape[1]
 # create_spectrogram(trials,elec=10)
 # for i in range(len(trials)):
 #     # sum_col = trials[i].sum(axis=0)
