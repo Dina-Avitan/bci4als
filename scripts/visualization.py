@@ -175,14 +175,14 @@ for trial in range(data.shape[0]):
     # C3
     data[trial][perm_c3[0]] = (data[trial][perm_c3[0]]-data[trial][perm_c3[0]].mean())-\
                               (((data[trial][perm_c3[1]]-data[trial][perm_c3[1]].mean())
-                              + (data[trial][perm_c3[2]]--data[trial][perm_c3[2]].mean())
+                              + (data[trial][perm_c3[2]]-data[trial][perm_c3[2]].mean())
                               + (data[trial][perm_c3[3]]-data[trial][perm_c3[3]].mean())
                               + (data[trial][perm_c3[4]]-data[trial][perm_c3[4]].mean())) / 4)
 
     # C4
     data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
                               (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
-                                + (data[trial][perm_c3[7]] - -data[trial][perm_c3[7]].mean())
+                                + (data[trial][perm_c3[7]]  -data[trial][perm_c3[7]].mean())
                                 + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
                                 + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
     new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
