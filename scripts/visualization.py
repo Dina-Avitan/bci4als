@@ -171,4 +171,27 @@ labels = data2.labels
 data = data2.epochs.get_data()
 # perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
 perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
+for trial in range(data.shape[0]):
+    # C3
+    data[trial][perm_c3[0]] = (data[trial][perm_c3[0]]-data[trial][perm_c3[0]].mean())-\
+                              (((data[trial][perm_c3[1]]-data[trial][perm_c3[1]].mean())
+                              + (data[trial][perm_c3[2]]--data[trial][perm_c3[2]].mean())
+                              + (data[trial][perm_c3[3]]-data[trial][perm_c3[3]].mean())
+                              + (data[trial][perm_c3[4]]-data[trial][perm_c3[4]].mean())) / 4)
+
+    # C4
+    data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
+                              (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
+                                + (data[trial][perm_c3[7]] - -data[trial][perm_c3[7]].mean())
+                                + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
+                                + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
+    new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
+    if trial == 0:
+        final_data = new_data[np.newaxis]
+    else:
+        final_data = np.vstack((final_data, new_data[np.newaxis]))
+one_tr = final_data[1,:,:]
+one_tr = one_tr.transpose()
+plt.plot(one_tr)
+plt.show()
 #for trial in range(data.shape[0]):
