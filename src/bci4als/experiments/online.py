@@ -42,8 +42,8 @@ class OnlineExperiment(Experiment):
     """
 
     def __init__(self, eeg: EEG, model: MLModel, num_trials: int,
-                 buffer_time: float, threshold: int, skip_after: Union[bool, int] = False,
-                 co_learning: bool = False, debug=False):
+                 buffer_time: float, threshold: int, co_learning: bool,skip_after: Union[bool, int] = False,
+                 debug=False):
 
         super().__init__(eeg, num_trials)
         # experiment params
@@ -64,6 +64,8 @@ class OnlineExperiment(Experiment):
         self.labels_enum: Dict[str, int] = {'right': 0, 'left': 1, 'idle': 2}  # , 'tongue': 3, 'legs': 4}
         self.label_dict: Dict[int, str] = dict([(value, key) for key, value in self.labels_enum.items()])
         self.num_labels: int = len(self.labels_enum)
+        self.batch_stack = [[],[],[]]  # number of classes is number of empty lists
+
 
         # Hold list of lists of target-prediction pairs per trial
         # Example: [ [(0, 2), (0,3), (0,0), (0,0), (0,0) ] , [ ...] , ... ,[] ]
@@ -88,7 +90,6 @@ class OnlineExperiment(Experiment):
         timer = core.Clock()
         target_predictions = []
         num_tries = 0
-        batch_stack = [[],[],[]]  # number of classes is number of empty lists
         while not feedback.stop:
             # increase num_tries by 1
             print(f"num tries {num_tries}")
@@ -98,24 +99,20 @@ class OnlineExperiment(Experiment):
 
             # Get data and channes from EEG
             data = self.eeg.get_channels_data()
-            ch_names = self.eeg.get_board_names()
-            sfreq: int = self.eeg.sfreq
-            ch_types = ['eeg'] * len(ch_names)
-            n_samples: int = min([t.shape[0] for t in data])  # get the minimum length of each elec
-            epochs_array: np.ndarray = (np.stack([t[:n_samples] for t in data]))[np.newaxis]  # make the elecs same size
-            info = mne.create_info(ch_names, sfreq, ch_types)
-            epochs = mne.EpochsArray(epochs_array, info)
-
-            # Get the data into epochs array and filter it
-            epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
 
             # LaPlacian filter
-            data, channels_removed = self.eeg.laplacian(np.squeeze(epochs.get_data()))
+            data, channels_removed = self.eeg.laplacian(data)
+
+            # get data into epochs and filter it
+            ch_names = self.eeg.get_board_names()
             [ch_names.remove(bad_ch) for bad_ch in self.model.channel_removed if bad_ch in ch_names]
             ch_types = ['eeg'] * len(ch_names)
+            sfreq: int = self.eeg.sfreq
             info = mne.create_info(ch_names, sfreq, ch_types)
+            n_samples: int = min([t.shape[0] for t in data])  # get the minimum length of each elec
+            epochs_array: np.ndarray = (np.stack([t[:self.model.epochs.get_data()[0].shape[1]] for t in data]))[np.newaxis]  # make the elecs same size
+            epochs = mne.EpochsArray(epochs_array, info)
             epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
-            epochs = mne.EpochsArray(data[np.newaxis], info)
 
             # Predict the class
             if self.debug:
@@ -134,11 +131,19 @@ class OnlineExperiment(Experiment):
                 if prediction == stim:
                     playsound.playsound(self.audio_success_path)
 
-            if self.co_learning and prediction == stim:  # maybe prediction doesnt have to be == stim
-                batch_stack[stim].append(np.squeeze(epochs.get_data()))
-                if all(batch_stack):
-                    data_batched = [batch_stack[0].pop(0), batch_stack[1].pop(0), batch_stack[2].pop(0)]
-                    self.model.partial_fit(data_batched, [0,1,2], epochs)
+            if self.co_learning:# and prediction == stim:  # maybe prediction doesnt have to be == stim
+                self.batch_stack[stim].append(np.squeeze(epochs.get_data()))
+                print(epochs.get_data()[0].shape)
+                print('***************')
+                print(stim)
+                print(self.batch_stack[0].__len__())
+                print(self.batch_stack[1].__len__())
+                print(self.batch_stack[2].__len__())
+                print('***************')
+                if all(self.batch_stack):
+                    print('co-adaptive working')
+                    data_batched = [self.batch_stack[0].pop(0), self.batch_stack[1].pop(0), self.batch_stack[2].pop(0)]
+                    self.model.partial_fit(data_batched, [0,1,2], epochs, sfreq)
                     pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
             target_predictions.append((int(stim), int(prediction)))
 

@@ -162,7 +162,7 @@ class MLModel:
                 feat_num_max = feat_num
         return max_score, feat_num_max
 
-    def partial_fit(self, X, y, epochs):
+    def partial_fit(self, X, y, epochs,sfreq):
 
         # Append X to trials
         [self.trials.append(trial) for trial in X]
@@ -171,10 +171,13 @@ class MLModel:
         [self.labels.append(label) for label in y]
 
         # update self.epochs
-        info = mne.create_info(epochs.ch_names, epochs.sfreq, epochs.ch_types)
-        temp_epoch = self.epochs.get_data()
-        [np.concatenate(temp_epoch, trial[np.newaxis]) for trial in X]
+        ch_types = ['eeg'] * len(epochs.ch_names)
+        info = mne.create_info(epochs.ch_names, sfreq, ch_types)
+        temp_epoch = copy.deepcopy(self.epochs.get_data())
+        [np.concatenate((temp_epoch, trial[np.newaxis])) for trial in X]
         self.epochs = mne.EpochsArray(temp_epoch, info)
+        print(temp_epoch.shape)
+        print(self.epochs.get_data().shape)
         del temp_epoch
 
         # update feature mat and fit model
