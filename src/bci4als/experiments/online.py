@@ -144,7 +144,7 @@ class OnlineExperiment(Experiment):
                     print('co-adaptive working')
                     data_batched = [self.batch_stack[0].pop(0), self.batch_stack[1].pop(0), self.batch_stack[2].pop(0)]
                     self.model.partial_fit(data_batched, [0,1,2], epochs, sfreq)
-                    pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
+                    pickle.dump(self.model, open(os.path.join(self.session_directory, 'trained_model.pickle'), 'wb'))
             target_predictions.append((int(stim), int(prediction)))
 
             # Reset the clock for the next buffer

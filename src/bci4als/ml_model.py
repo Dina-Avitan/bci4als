@@ -174,7 +174,10 @@ class MLModel:
         ch_types = ['eeg'] * len(epochs.ch_names)
         info = mne.create_info(epochs.ch_names, sfreq, ch_types)
         temp_epoch = copy.deepcopy(self.epochs.get_data())
-        [np.concatenate((temp_epoch, trial[np.newaxis])) for trial in X]
+        print(temp_epoch.shape)
+        print(X[0].shape)
+        for trial in X:
+            temp_epoch = np.concatenate((temp_epoch, trial[np.newaxis]))
         self.epochs = mne.EpochsArray(temp_epoch, info)
         print(temp_epoch.shape)
         print(self.epochs.get_data().shape)
