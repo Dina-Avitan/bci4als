@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 # from bci4als.ml_model import MLModel
 # from bci4als.experiments.offline import OfflineExperiment
 #from mne.channels import make_standard_montage
+from sklearn.decomposition import FastICA
 import scipy
 from scipy import signal
 # import matplotlib as mpl
@@ -48,8 +49,36 @@ def plot_elec_model(model, elec_num='all',range_time = 'all'):
     if range_time == 'all':
         end_time = len(trials)
         start_time = 0
-    start_time = range_time[0]
-    end_time= range_time[1]
+    else:
+        start_time = range_time[0]
+        end_time= range_time[1]
+    all_sig = [trials[i] for i in range(start_time, end_time)]
+    all_sig = np.concatenate(all_sig,1)
+    all_sig = all_sig.transpose()
+    elec_name = model.epochs.ch_names
+    if elec_num != 'all':
+        all_sig = all_sig[:,tuple(elec_num)]
+        elec_name = [elec_name[i] for i in elec_num]
+    plt.plot(all_sig)
+    plt.legend(elec_name)
+    plt.suptitle('EEG elec over time', fontsize=16)
+    plt.show()
+def plot_elec_model_ica(model, elec_num='all',range_time = 'all'):
+    '''
+    Args:
+        model: the modelqunfilterd_model file in the subject directory
+        elec_num: (list) list with the indices of electrodes (str) you want to plot.
+        range_time: (tuple) the range of trials you want to plot
+    Returns: plot of the voltage over time of the electrodes
+    '''
+    #trials = model.epochs.get_data()
+    trials = ICA(data2)
+    if range_time == 'all':
+        end_time = len(trials)
+        start_time = 0
+    else:
+        start_time = range_time[0]
+        end_time= range_time[1]
     all_sig = [trials[i] for i in range(start_time, end_time)]
     all_sig = np.concatenate(all_sig,1)
     all_sig = all_sig.transpose()
@@ -131,6 +160,24 @@ def plot_spectrogram(spec_dict,elec):
     plt.colorbar(im, ax=axs.ravel().tolist())
     #plt.show()
 
+def ICA(unfiltered_model):
+    # ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
+    trials = unfiltered_model.epochs.get_data()
+    all_sig = [trials[i] for i in range(len(trials))]
+    all_sig = np.concatenate(all_sig, 1)
+    all_sig = all_sig[:,:10000]
+    all_sig = all_sig.transpose()
+    ica_data = np.zeros(all_sig.shape)
+    transformer = FastICA(n_components=20, random_state=0)
+    X_transformed = transformer.fit_transform(all_sig)
+    for j in range(X_transformed.shape[1]):
+        plt.plot(X_transformed[:,j])
+        plt.show()
+    X_transformed[:,0]= np.zeros(X_transformed.shape)[:,1]
+    X_transformed[:, 1] = np.zeros(X_transformed.shape)[:, 1]
+    ica_data = transformer.inverse_transform(X_transformed, copy=True)
+    return ica_data
+
  # Ofir's data
 # EEG = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\EEG.mat')
 # trainingVec = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\trainingVec.mat')
@@ -158,8 +205,12 @@ def plot_spectrogram(spec_dict,elec):
 
 data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
 data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\trials.pickle')
-plot_raw_elec(data3, elec_name='all',range_time = 'all')
-plot_elec_model(data2, elec_num='all',range_time = (4,7))
+#plot_raw_elec(data3, elec_name='all',range_time = 'all')
+ICA(data2)
+# plot_elec_model(data2, elec_num='all',range_time = 'all')
+# plot_elec_model_ica(data2, elec_num='all',range_time = 'all')
+# plot_elec_model(data2, elec_num='all',range_time = (4,7))
+# plot_elec_model_ica(data2, elec_num='all',range_time = (4,7))
 labels = data2.labels
 data = data2.epochs.get_data()
 perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
