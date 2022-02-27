@@ -158,6 +158,10 @@ def permutation_func():
         print(f"Prediction rate is: {np.mean(scores_mix) * 100}%")
         print(max_score, feat_num_max, perm_c3)
 
+def ICA(ufiltered_model):
+    epochs = ufiltered_model.epochs
+    ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
+
 if __name__ == '__main__':
     # playground()
     # load_eeg()

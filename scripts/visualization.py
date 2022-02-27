@@ -16,6 +16,7 @@ from scipy import signal
 import scipy
 import scipy.io
 import pandas as pd
+from copy import copy
 def plot_raw_elec(trials, elec_name='all',range_time = 'all'):
     '''
     Args:
@@ -30,6 +31,32 @@ def plot_raw_elec(trials, elec_name='all',range_time = 'all'):
         range_time = len(trials)
     all_sig = [trials[i][elec_name] for i in range(range_time)]
     all_sig = np.concatenate(all_sig)
+    plt.plot(all_sig)
+    plt.legend(elec_name)
+    plt.suptitle('EEG elec over time', fontsize=16)
+    plt.show()
+
+def plot_elec_model(model, elec_num='all',range_time = 'all'):
+    '''
+    Args:
+        model: the modelqunfilterd_model file in the subject directory
+        elec_num: (list) list with the indices of electrodes (str) you want to plot.
+        range_time: (tuple) the range of trials you want to plot
+    Returns: plot of the voltage over time of the electrodes
+    '''
+    trials = model.epochs.get_data()
+    if range_time == 'all':
+        end_time = len(trials)
+        start_time = 0
+    start_time = range_time[0]
+    end_time= range_time[1]
+    all_sig = [trials[i] for i in range(start_time, end_time)]
+    all_sig = np.concatenate(all_sig,1)
+    all_sig = all_sig.transpose()
+    elec_name = model.epochs.ch_names
+    if elec_num != 'all':
+        all_sig = all_sig[:,tuple(elec_num)]
+        elec_name = [elec_name[i] for i in elec_num]
     plt.plot(all_sig)
     plt.legend(elec_name)
     plt.suptitle('EEG elec over time', fontsize=16)
@@ -61,11 +88,6 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
     plt.xlabel('frequency [Hz]')
     plt.ylabel('PSD- semilogy Scale')#[V**2/Hz]?
     plt.show()
-
-
-
-
-#def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
 
 def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
     sr = raw_model.epochs.info['sfreq']
@@ -107,7 +129,7 @@ def plot_spectrogram(spec_dict,elec):
     plt.setp(axs[-1, :], xlabel='Time [sec]')
     plt.setp(axs[:, 0], ylabel='Frequency [Hz]')
     plt.colorbar(im, ax=axs.ravel().tolist())
-    plt.show()
+    #plt.show()
 
  # Ofir's data
 # EEG = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\EEG.mat')
@@ -134,43 +156,20 @@ def plot_spectrogram(spec_dict,elec):
 #         final_data = np.vstack((final_data, new_data[np.newaxis]))
 # data = final_data
 
-# fpath1 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\unfiltered_model.pickle'
-# fpath2 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\8\raw_model.pickle'
-#fpath3 = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\\roy\\2\\raw_model.pickle'
-#trials = pickle.load(open(fpath3, 'rb'))
-#raw_model = pickle.load(open(fpath3, 'rb'))
-#traind_model = pickle.load(open(fpath3, 'rb'))
-
-#plot_raw_elec(trials,range_time = 1)
-#create_spectrogram(raw_model,elec=1)
-# create_spectrogram(trials,elec=1)
-
-#raw_model.plot(scalings="auto", clipping=None)
-#trials[0].shape[1]
-# create_spectrogram(trials,elec=10)
-# for i in range(len(trials)):
-#     # sum_col = trials[i].sum(axis=0)
-#     # sum_col[sum_col == 0].index.tolist()
-#     std_col = trials[i].std(axis=0)
-#     to_remove = std_col[std_col == 0].index.tolist()
-
-# to_remove = []
-# for i in range(len(features_mat)):
-#     nan_col = np.isnan(raw_model.trials[0]).sum(axis = 0)
-#     add_remove = np.where(np.in1d(nan_col,not 0))
-#     to_rermove.append(add_remove)
-#     func = lambda x: x>2
-#     z_mat = scipy.stats.zscore(a, axis=0, ddof=0, nan_policy='omit')
-#     Z_bool = func(z_mat).sum(axis=0)
-#     add_remove = np.where(np.in1d(Z_bool,not 0))
-
-# roy roy
-# noam
 data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
+data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\trials.pickle')
+plot_raw_elec(data3, elec_name='all',range_time = 'all')
+plot_elec_model(data2, elec_num='all',range_time = (4,7))
 labels = data2.labels
 data = data2.epochs.get_data()
-# perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
 perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
+C3_not_laplacian = data[1][perm_c3[0]]
+plt.plot(C3_not_laplacian)
+#plt.show()
+plt.plot(data[1][perm_c3[5]])
+#plt.show()
+plt.plot(data[1])
+#plt.show()
 for trial in range(data.shape[0]):
     # C3
     data[trial][perm_c3[0]] = (data[trial][perm_c3[0]]-data[trial][perm_c3[0]].mean())-\
@@ -178,13 +177,12 @@ for trial in range(data.shape[0]):
                               + (data[trial][perm_c3[2]]-data[trial][perm_c3[2]].mean())
                               + (data[trial][perm_c3[3]]-data[trial][perm_c3[3]].mean())
                               + (data[trial][perm_c3[4]]-data[trial][perm_c3[4]].mean())) / 4)
-
     # C4
     data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
                               (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
-                                + (data[trial][perm_c3[7]]  -data[trial][perm_c3[7]].mean())
-                                + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
-                                + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
+                              + (data[trial][perm_c3[7]]  -data[trial][perm_c3[7]].mean())
+                              + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
+                              + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
     new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
     if trial == 0:
         final_data = new_data[np.newaxis]
@@ -193,5 +191,5 @@ for trial in range(data.shape[0]):
 one_tr = final_data[1,:,:]
 one_tr = one_tr.transpose()
 plt.plot(one_tr)
-plt.show()
+#plt.show()
 #for trial in range(data.shape[0]):
