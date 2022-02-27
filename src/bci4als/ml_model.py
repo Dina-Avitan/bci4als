@@ -1,3 +1,4 @@
+import copy
 import math
 import os
 import pickle
@@ -81,7 +82,7 @@ class MLModel:
         This function will re-learn the model's feature mat and clf object which represents the model itself
         """
         # Extract spectral features
-        data = self.epochs.get_data()
+        data = copy.deepcopy(self.epochs.get_data())
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = self.epochs.info['sfreq']
         bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)

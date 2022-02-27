@@ -1,5 +1,6 @@
 # This script is meant to load models and allow the user to change hyper-parameters
 # so you could fine-tune the real offline_training class
+import copy
 import math
 from tkinter import filedialog, Tk
 
@@ -35,11 +36,11 @@ def playground():
 
 
 def load_eeg():
-    fs = 250
+    fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-    # clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=100, random_state=0, max_iter=400)
+    # clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=50, random_state=0, max_iter=400)
 
     # # Ofir's data
     # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
@@ -48,7 +49,7 @@ def load_eeg():
     # labels = np.ravel(trainingVec['trainingVec'].T)
     #  # data should be trails X electrodes X samples.
     # data = np.transpose(data, (2, 0, 1))
-
+    #
     # final_data = []
     #
     # for trial in range(data.shape[0]):
@@ -68,13 +69,12 @@ def load_eeg():
 
     # Our data
     # data1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\2\raw_model.pickle')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\raw_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
     # data = np.concatenate((data1.epochs.get_data()[:, :, :550], data2.epochs.get_data()[:, :, :550]), axis=0)
     # labels = np.concatenate((data1.labels,data2.labels), axis=0)
     #
     labels = data2.labels
     data = data2.epochs.get_data()
-
     # # ICA which does not work
     # for d in range(len(data)):
     #     if d == 0:
@@ -86,10 +86,10 @@ def load_eeg():
 
     # # Assemble a classifier
     lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=4, reg=None, log=False, norm_trace=False, transform_into='average_power', cov_est='epoch')
+    csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
 
-    for feat_num in range(1, int(math.sqrt(data.shape[0]))):
+    for feat_num in [9]:#range(1, int(math.sqrt(data.shape[0]))):
         bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
@@ -113,35 +113,43 @@ def permutation_func():
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-    #data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
-    data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
+    # data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
     labels = data2.labels
+    # data2.epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
     data = data2.epochs.get_data()
     # perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
-    perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
-
-    for trial in range(data.shape[0]):
-        # C3
-        # data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
-        #                       data[trial][perm_c3[4]]) / 4
-        data[trial][perm_c3[0]] = (data[trial][perm_c3[0]] - data[trial][perm_c3[0]].mean()) - \
-                                  (((data[trial][perm_c3[1]] - data[trial][perm_c3[1]].mean())
-                                    + (data[trial][perm_c3[2]] - data[trial][perm_c3[2]].mean())
-                                    + (data[trial][perm_c3[3]] - data[trial][perm_c3[3]].mean())
-                                    + (data[trial][perm_c3[4]] - data[trial][perm_c3[4]].mean())) / 4)
-        # C4
-        # data[trial][perm_c3[5]] -= (data[trial][perm_c3[6]] + data[trial][perm_c3[7]] + data[trial][perm_c3[8]] +
-        #                       data[trial][perm_c3[9]]) / 4
-        data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
-                                  (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
-                                    + (data[trial][perm_c3[7]] - data[trial][perm_c3[7]].mean())
-                                    + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
-                                    + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
-        new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
-        if trial == 0:
-            final_data = new_data[np.newaxis]
-        else:
-            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    # perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
+    # perm_c3 = (0, 1, 2, 3, 5, 6, 4, 7, 8, 9, 10)
+    #
+    # for trial in range(data.shape[0]):
+    #     # C3
+    #     data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
+    #                           data[trial][perm_c3[4]]) / 2
+    #     # data[trial][perm_c3[0]] = (data[trial][perm_c3[0]] - data[trial][perm_c3[0]].mean()) - \
+    #     #                           (((data[trial][perm_c3[1]] - data[trial][perm_c3[1]].mean())
+    #     #                             + (data[trial][perm_c3[2]] - data[trial][perm_c3[2]].mean())
+    #     #                             + (data[trial][perm_c3[3]] - data[trial][perm_c3[3]].mean())
+    #     #                             + (data[trial][perm_c3[4]] - data[trial][perm_c3[4]].mean())) / 4)
+    #     # C4
+    #     data[trial][perm_c3[5]] -= (data[trial][perm_c3[6]] + data[trial][perm_c3[7]] + data[trial][perm_c3[8]] +
+    #                           data[trial][perm_c3[9]]) / 2
+    #     # data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
+    #     #                           (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
+    #     #                             + (data[trial][perm_c3[7]] - data[trial][perm_c3[7]].mean())
+    #     #                             + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
+    #     #                             + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
+    #     new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
+    #     # new_data = data[trial]
+    #     if trial == 0:
+    #         final_data = new_data[np.newaxis]
+    #     else:
+    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
+    # data = final_data
+    # # Assemble a classifier
+    lda = LinearDiscriminantAnalysis()
+    csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
+    csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     # bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
@@ -149,14 +157,14 @@ def permutation_func():
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     scaler.transform(bandpower_features_wtf)
-    bandpower_features_wtf = SelectKBest(mutual_info_classif, k=9).fit_transform(bandpower_features_wtf, labels)
+    bandpower_features_wtf = SelectKBest(mutual_info_classif, k=8).fit_transform(bandpower_features_wtf, labels)
     scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
     print(np.mean(scores_mix)*100)
     if np.mean(scores_mix)*100 > max_score:
         max_score = np.mean(scores_mix)*100
         feat_num_max = 9
         print(f"Prediction rate is: {np.mean(scores_mix) * 100}%")
-        print(max_score, feat_num_max, perm_c3)
+        print(max_score, feat_num_max)
 
 def ICA(ufiltered_model):
     epochs = ufiltered_model.epochs
