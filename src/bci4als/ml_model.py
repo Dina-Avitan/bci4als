@@ -77,6 +77,9 @@ class MLModel:
         self.epochs = epochs
 
     def _simple_svm(self):
+        """
+        This function will re-learn the model's feature mat and clf object which represents the model itself
+        """
         # Extract spectral features
         data = self.epochs.get_data()
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
@@ -128,10 +131,6 @@ class MLModel:
     def online_predict(self, data: NDArray, eeg: EEG):
         # Prepare the data to MNE functions
         data = data.astype(np.float64)
-        # Filter the data ( band-pass only)
-        data = mne.filter.filter_data(data, l_freq=1, h_freq=40, sfreq=eeg.sfreq, verbose=False)
-        # LaPlacian filter
-        data, channels_removed = eeg.laplacian(data)
         # maybe make feature extraction static and avoid replicating this shit
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = eeg.sfreq
@@ -162,7 +161,7 @@ class MLModel:
                 feat_num_max = feat_num
         return max_score, feat_num_max
 
-    def partial_fit(self, X, y):
+    def partial_fit(self, X, y, epochs):
 
         # Append X to trials
         [self.trials.append(trial) for trial in X]
@@ -170,11 +169,15 @@ class MLModel:
         # Append y to labels
         [self.labels.append(label) for label in y]
 
-        # update feature mat
+        # update self.epochs
+        info = mne.create_info(epochs.ch_names, epochs.sfreq, epochs.ch_types)
+        temp_epoch = self.epochs.get_data()
+        [np.concatenate(temp_epoch, trial[np.newaxis]) for trial in X]
+        self.epochs = mne.EpochsArray(temp_epoch, info)
+        del temp_epoch
 
-        # append to feature mat
-
-        # fit model again
+        # update feature mat and fit model
+        self._simple_svm()
 
     @staticmethod
     def extract_bandpower(data: NDArray, bands: np.matrix, fs: int):

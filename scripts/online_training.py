@@ -9,6 +9,11 @@ def run_experiment(model_path: str):
 
     model = pickle.load(open(model_path, 'rb'))
 
+    # re-fit model? (recommended)
+    re_fit = True
+    if re_fit:
+        model.offline_training(model_type='simple_svm')
+
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2
 
@@ -26,7 +31,7 @@ def run_experiment(model_path: str):
 
 if __name__ == '__main__':
 
-    model_path = r'../recordings/noam/8/trained_model.pickle'
+    model_path = r'../recordings/roy/2/trained_model.pickle'
     # model_path = None  # use if synthetic
     run_experiment(model_path=model_path)
 

@@ -96,8 +96,26 @@ class OnlineExperiment(Experiment):
             # Sleep until the buffer full
             time.sleep(max(0, self.buffer_time - timer.getTime()))
 
-            # Extract features from the EEG data
+            # Get data and channes from EEG
             data = self.eeg.get_channels_data()
+            ch_names = self.eeg.get_board_names()
+            sfreq: int = self.eeg.sfreq
+            ch_types = ['eeg'] * len(ch_names)
+            n_samples: int = min([t.shape[0] for t in data])  # get the minimum length of each elec
+            epochs_array: np.ndarray = (np.stack([t[:n_samples] for t in data]))[np.newaxis]  # make the elecs same size
+            info = mne.create_info(ch_names, sfreq, ch_types)
+            epochs = mne.EpochsArray(epochs_array, info)
+
+            # Get the data into epochs array and filter it
+            epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+
+            # LaPlacian filter
+            data, channels_removed = self.eeg.laplacian(np.squeeze(epochs.get_data()))
+            [ch_names.remove(bad_ch) for bad_ch in self.model.channel_removed if bad_ch in ch_names]
+            ch_types = ['eeg'] * len(ch_names)
+            info = mne.create_info(ch_names, sfreq, ch_types)
+            epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+            epochs = mne.EpochsArray(data[np.newaxis], info)
 
             # Predict the class
             if self.debug:
@@ -105,7 +123,8 @@ class OnlineExperiment(Experiment):
                 prediction = stim if np.random.rand() <= 2 / 3 else (stim + 1) % len(self.labels_enum)
             else:
                 # in normal mode, use the loaded model to make a prediction
-                prediction, test_features = self.model.online_predict(data, eeg=self.eeg)
+                # squeeze is a plaster. you can later remove all the newaxis fom online predict
+                prediction, test_features = self.model.online_predict(np.squeeze(epochs.get_data()), eeg=self.eeg)
                 prediction = int(prediction)
 
             # play sound if successful
@@ -116,10 +135,10 @@ class OnlineExperiment(Experiment):
                     playsound.playsound(self.audio_success_path)
 
             if self.co_learning and prediction == stim:  # maybe prediction doesnt have to be == stim
-                batch_stack[stim].append(data)
+                batch_stack[stim].append(np.squeeze(epochs.get_data()))
                 if all(batch_stack):
                     data_batched = [batch_stack[0].pop(0), batch_stack[1].pop(0), batch_stack[2].pop(0)]
-                    self.model.partial_fit(data_batched, [0,1,2])
+                    self.model.partial_fit(data_batched, [0,1,2], epochs)
                     pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
             target_predictions.append((int(stim), int(prediction)))
 
