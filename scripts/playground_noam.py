@@ -11,6 +11,7 @@ import sklearn.decomposition
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.feature_selection import SelectKBest, chi2, mutual_info_classif
+from sklearn.decomposition import FastICA
 import scipy
 import scipy.io
 from bci4als import ml_model
@@ -113,11 +114,12 @@ def permutation_func():
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
-    # data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
+    #data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
     labels = data2.labels
     # data2.epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
-    data = data2.epochs.get_data()
+    #data = data2.epochs.get_data()
+    data = ICA(data2)
     # perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
     # perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
     # perm_c3 = (0, 1, 2, 3, 5, 6, 4, 7, 8, 9, 10)
@@ -156,7 +158,7 @@ def permutation_func():
     bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
-    scaler.transform(bandpower_features_wtf)
+    bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
     bandpower_features_wtf = SelectKBest(mutual_info_classif, k=8).fit_transform(bandpower_features_wtf, labels)
     scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
     print(np.mean(scores_mix)*100)
@@ -167,8 +169,15 @@ def permutation_func():
         print(max_score, feat_num_max)
 
 def ICA(ufiltered_model):
-    epochs = ufiltered_model.epochs
-    ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
+    # ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
+    data = ufiltered_model.epochs.get_data()
+    ica_data = np.zeros(data.shape)
+    for i in range(len(data)):
+        transformer = FastICA(n_components=5, random_state=0)
+        X_transformed = transformer.fit_transform(data[i].transpose())
+        s = transformer.inverse_transform(X_transformed, copy=True)
+        ica_data[i]= s.transpose()
+    return ica_data
 
 if __name__ == '__main__':
     # playground()
