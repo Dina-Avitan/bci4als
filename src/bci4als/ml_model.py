@@ -86,8 +86,9 @@ class MLModel:
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = self.epochs.info['sfreq']
         bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
-        hjorth_complexity = self.hjorthMobility(data)
-        self.features_mat = np.concatenate((hjorth_complexity, bandpower_features), axis=1)
+        bandpower_features_rel = self.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+        # hjorth_complexity = self.hjorthMobility(data)
+        self.features_mat = np.concatenate((bandpower_features_rel, bandpower_features), axis=1)
         # Normalize
         self.scaler.fit(self.features_mat)
         self.scaler.transform(self.features_mat)
@@ -136,9 +137,10 @@ class MLModel:
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = eeg.sfreq
         bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=False)
-        hjorth_complexity = self.hjorthMobility(data[np.newaxis])
+        bandpower_features_rel = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=True)
+        # hjorth_complexity = self.hjorthMobility(data[np.newaxis])
         # combine features
-        features_mat_test = np.concatenate((hjorth_complexity, bandpower_features), axis=0)
+        features_mat_test = np.concatenate((bandpower_features_rel, bandpower_features), axis=0)
         # Normalize
         features_mat_test = self.scaler.transform(features_mat_test[numpy.newaxis])
         # Trials rejection
