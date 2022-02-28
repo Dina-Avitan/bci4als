@@ -69,7 +69,7 @@ def load_eeg():
 
     # Our data
     # data1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\2\raw_model.pickle')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\2\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\10\unfiltered_model.pickle')
     # data = np.concatenate((data1.epochs.get_data()[:, :, :550], data2.epochs.get_data()[:, :, :550]), axis=0)
     # labels = np.concatenate((data1.labels,data2.labels), axis=0)
     #
@@ -89,7 +89,7 @@ def load_eeg():
     csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
 
-    for feat_num in [9]:#range(1, int(math.sqrt(data.shape[0]))):
+    for feat_num in range(1, int(math.sqrt(data.shape[0]))):
         bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
         bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
@@ -113,7 +113,7 @@ def permutation_func():
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\3\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\4\unfiltered_model.pickle')
     # data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
     labels = data2.labels
     # data2.epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
@@ -172,5 +172,5 @@ def ICA(ufiltered_model):
 
 if __name__ == '__main__':
     # playground()
-    # load_eeg()
-    permutation_func()
+    load_eeg()
+    # permutation_func()

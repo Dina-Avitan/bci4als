@@ -101,11 +101,11 @@ class OnlineExperiment(Experiment):
             data = self.eeg.get_channels_data()
 
             # LaPlacian filter
-            data, channels_removed = self.eeg.laplacian(data)
+            # data, channels_removed = self.eeg.laplacian(data)
 
             # get data into epochs and filter it
             ch_names = self.eeg.get_board_names()
-            [ch_names.remove(bad_ch) for bad_ch in self.model.channel_removed if bad_ch in ch_names]
+            # [ch_names.remove(bad_ch) for bad_ch in self.model.channel_removed if bad_ch in ch_names]
             ch_types = ['eeg'] * len(ch_names)
             sfreq: int = self.eeg.sfreq
             info = mne.create_info(ch_names, sfreq, ch_types)
@@ -131,15 +131,8 @@ class OnlineExperiment(Experiment):
                 if prediction == stim:
                     playsound.playsound(self.audio_success_path)
 
-            if self.co_learning:# and prediction == stim:  # maybe prediction doesnt have to be == stim
+            if self.co_learning and prediction == stim:  # maybe prediction doesnt have to be == stim
                 self.batch_stack[stim].append(np.squeeze(epochs.get_data()))
-                print(epochs.get_data()[0].shape)
-                print('***************')
-                print(stim)
-                print(self.batch_stack[0].__len__())
-                print(self.batch_stack[1].__len__())
-                print(self.batch_stack[2].__len__())
-                print('***************')
                 if all(self.batch_stack):
                     print('co-adaptive working')
                     data_batched = [self.batch_stack[0].pop(0), self.batch_stack[1].pop(0), self.batch_stack[2].pop(0)]
