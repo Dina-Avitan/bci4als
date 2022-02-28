@@ -120,6 +120,7 @@ def permutation_func():
     # data2.epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
     #data = data2.epochs.get_data()
     data = ICA(data2)
+    epochs_array: np.ndarray = np.stack([data[t:t+n_samples] for t in self.trials])
     # perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
     # perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
     # perm_c3 = (0, 1, 2, 3, 5, 6, 4, 7, 8, 9, 10)
@@ -168,15 +169,22 @@ def permutation_func():
         print(f"Prediction rate is: {np.mean(scores_mix) * 100}%")
         print(max_score, feat_num_max)
 
-def ICA(ufiltered_model):
+def ICA(unfiltered_model):
     # ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
-    data = ufiltered_model.epochs.get_data()
-    ica_data = np.zeros(data.shape)
-    for i in range(len(data)):
-        transformer = FastICA(n_components=5, random_state=0)
-        X_transformed = transformer.fit_transform(data[i].transpose())
-        s = transformer.inverse_transform(X_transformed, copy=True)
-        ica_data[i]= s.transpose()
+    trials = unfiltered_model.epochs.get_data()
+    all_sig = [trials[i] for i in range(len(trials))]
+    all_sig = np.concatenate(all_sig, 1)
+    #all_sig = all_sig[:,:20000]
+    all_sig = all_sig.transpose()
+    ica_data = np.zeros(all_sig.shape)
+    transformer = FastICA(n_components=20, random_state=0)
+    X_transformed = transformer.fit_transform(all_sig)
+    # for j in range(X_transformed.shape[1]):
+    #     plt.plot(X_transformed[:,j])
+    #     plt.show()
+    X_transformed[:,6] = np.zeros(X_transformed.shape)[:,1]
+    X_transformed[:,7] = np.zeros(X_transformed.shape)[:,1]
+    ica_data = transformer.inverse_transform(X_transformed, copy=True)
     return ica_data
 
 if __name__ == '__main__':
