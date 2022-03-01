@@ -10,19 +10,22 @@ import matplotlib.pyplot as plt
 import sklearn.decomposition
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.feature_selection import SelectKBest, chi2, mutual_info_classif
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.feature_selection import SelectKBest, chi2, mutual_info_classif, SelectFromModel
 import scipy
 import scipy.io
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.neural_network import MLPClassifier
+
 from bci4als import ml_model
 from sklearn import svm
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, ShuffleSplit, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.feature_selection import SelectFromModel
-from itertools import permutations
-from mne import filter
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+
 
 def playground():
     # load eeg data
@@ -68,46 +71,95 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    # data1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\2\raw_model.pickle')
     data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\10\unfiltered_model.pickle')
-    # data = np.concatenate((data1.epochs.get_data()[:, :, :550], data2.epochs.get_data()[:, :, :550]), axis=0)
-    # labels = np.concatenate((data1.labels,data2.labels), axis=0)
     #
+
     labels = data2.labels
     data = data2.epochs.get_data()
-    # # ICA which does not work
-    # for d in range(len(data)):
-    #     if d == 0:
-    #         data_ica = sklearn.decomposition.FastICA().fit_transform(data[d, :, :].T).T[np.newaxis]
-    #     else:
-    #         data_ica = np.vstack((data_ica, sklearn.decomposition.FastICA(n_components=data.shape[0],max_iter=400).fit_transform(data[d,:, :].T).
-    #                           T[np.newaxis]))
-    # data = data_ica
+
+    rf_classifier = RandomForestClassifier()
+    mlp_classifier = MLPClassifier(hidden_layer_sizes=[100]*5)
+    xgb_classifier = OneVsRestClassifier(XGBClassifier())
 
     # # Assemble a classifier
     lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
+    csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
+    bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+    bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+    # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    # LZC_features = ml_model.MLModel.LZC(data)
+    # DFA_features = ml_model.MLModel.DFA(data)
+    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
+    scaler = StandardScaler()
+    scaler.fit(bandpower_features_wtf)
+    bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
+    for feat_num in [3]:#range(1, int(math.sqrt(data.shape[0]))):
+        bandpower_features_selected = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).fit_transform(bandpower_features_wtf, labels)
+        # bandpower_features_selected = SelectKBest(mutual_info_classif, k=feat_num+1).fit_transform(bandpower_features_wtf, labels)
+        print(bandpower_features_selected.shape)
+        scores_mix = cross_val_score(clf, bandpower_features_selected, labels, cv=3, n_jobs=1)
+        scores_mix2 = cross_val_score(rf_classifier, bandpower_features_selected, labels, cv=3, n_jobs=1)
+        scores_mix3 = cross_val_score(mlp_classifier, bandpower_features_selected, labels, cv=3, n_jobs=1)
+        scores_mix4 = cross_val_score(xgb_classifier, bandpower_features_selected, labels, cv=3, n_jobs=1)
+        X_train, X_test, y_train, y_test = train_test_split(bandpower_features_selected, labels, random_state = 0)
+        clf.fit(X_train, y_train)
+        rf_classifier.fit(X_train, y_train)
+        mlp_classifier.fit(X_train, y_train)
+        xgb_classifier.fit(X_train, y_train)
+        ConfusionMatrixDisplay.from_estimator(clf, X_test, y_test, normalize='true')
+        plt.show()
+        ConfusionMatrixDisplay.from_estimator(rf_classifier, X_test, y_test, normalize='true')
+        plt.show()
+        ConfusionMatrixDisplay.from_estimator(mlp_classifier, X_test, y_test, normalize='true')
+        plt.show()
+        ConfusionMatrixDisplay.from_estimator(xgb_classifier, X_test, y_test, normalize='true')
+        plt.show()
 
-    for feat_num in range(1, int(math.sqrt(data.shape[0]))):
-        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
-        bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-        bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
-        bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
-        scaler = StandardScaler()
-        scaler.fit(bandpower_features_wtf)
-        bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
-        # bandpower_features_wtf = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=50, max_features=9)).fit_transform(bandpower_features_wtf, labels)
-        bandpower_features_wtf = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
-        print(bandpower_features_wtf.shape)
-        scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
-        (print(f"Prediction rate is: {np.mean(scores_mix)*100}%"))
+        (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
+        (print(f"RandomForest rate is: {np.mean(scores_mix2)*100}%"))
+        (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
+        (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
 
         if np.mean(scores_mix)*100 > max_score:
             max_score = np.mean(scores_mix)*100
             feat_num_max = feat_num
     print(max_score, feat_num_max)
-
+def get_feature_mat(model):
+    # define parameters
+    fs = 125
+    bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    # get data
+    data = model.epochs.get_data()
+    class_labels = model.labels
+    feature_labels = []
+    # get features
+    # CSP
+    lda = LinearDiscriminantAnalysis()
+    csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
+    csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, class_labels)
+    [feature_labels.append(f'CSP_Component{i}') for i in range(csp_features.shape[1])]
+    # Bandpower
+    bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in model.epochs.ch_names]
+    # relative bandpower
+    bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in model.epochs.ch_names]
+    # hjorthMobility
+    hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    [feature_labels.append(f'hjorthMobility_{chan}') for chan in model.epochs.ch_names]
+    # LZC
+    LZC_features = ml_model.MLModel.LZC(data)
+    [feature_labels.append(f'LZC_{chan}') for chan in model.epochs.ch_names]
+    # DFA
+    DFA_features = ml_model.MLModel.DFA(data)
+    [feature_labels.append(f'DFA_{chan}') for chan in model.epochs.ch_names]
+    # get all of them in one matrix
+    features_mat = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel,
+                                   hjorthMobility_features,LZC_features,DFA_features), axis=1)
+    scaler = StandardScaler()
+    scaler.fit(features_mat)
+    return features_mat, class_labels, feature_labels
 def permutation_func():
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
@@ -165,12 +217,38 @@ def permutation_func():
         feat_num_max = 9
         print(f"Prediction rate is: {np.mean(scores_mix) * 100}%")
         print(max_score, feat_num_max)
+def plot_SVM(feature_mat,labels):
+    h = .02  # step size in the mesh
+    C = 1.0  # SVM regularization parameter
+    feature_mat = feature_mat[:,:2]
+    clf = svm.SVC(decision_function_shape='ovo', kernel='linear').fit(feature_mat,labels)
+    x_min, x_max = feature_mat[:, 0].min() - 1, feature_mat[:, 0].max() + 1
+    y_min, y_max = feature_mat[:, 1].min() - 1, feature_mat[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                         np.arange(y_min, y_max, h))
+    Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+    # Put the result into a color plot
+    Z = Z.reshape(xx.shape)
+    plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.8)
+    # Plot also the training points
+    plt.scatter(feature_mat[:, 0], feature_mat[:, 1], c=labels, cmap=plt.cm.coolwarm)
+    plt.xlabel('Sepal length')
+    plt.ylabel('Sepal width')
+    plt.xlim(xx.min(), xx.max())
+    plt.ylim(yy.min(), yy.max())
+    plt.xticks(())
+    plt.yticks(())
+    plt.title('SVC with linear kernel')
+    plt.show()
 
 def ICA(ufiltered_model):
     epochs = ufiltered_model.epochs
     ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
 
 if __name__ == '__main__':
+    model = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\3\unfiltered_model.pickle')
     # playground()
     load_eeg()
     # permutation_func()
+    # a, b, c = get_feature_mat(model)
+    # plot_SVM(a, b)
