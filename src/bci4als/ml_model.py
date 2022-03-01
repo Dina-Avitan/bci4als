@@ -6,6 +6,8 @@ from typing import List
 import mne
 import numpy
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+
 from bci4als.eeg import EEG
 import numpy as np
 from matplotlib.figure import Figure
@@ -17,7 +19,7 @@ from sklearn.pipeline import Pipeline
 import scipy
 from sklearn import svm
 from sklearn.model_selection import cross_val_score, cross_val_predict
-from sklearn.feature_selection import SelectKBest, mutual_info_classif
+from sklearn.feature_selection import SelectKBest, mutual_info_classif, SelectFromModel
 from sklearn.preprocessing import StandardScaler
 from numba import njit
 
@@ -40,7 +42,7 @@ class MLModel:
         self.labels: List[int] = labels
         self.channel_removed: List[str] = channel_removed
         self.debug = True
-        self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')  # maybe make more dynamic to user
+        self.clf = RandomForestClassifier()  # maybe make more dynamic to user
         self.features_mat = None
         self.epochs = None
         self.raw_trials = None
@@ -81,6 +83,8 @@ class MLModel:
         """
         This function will re-learn the model's feature mat and clf object which represents the model itself
         """
+        # pick classifier
+        self.clf = RandomForestClassifier()
         # Extract spectral features
         data = copy.deepcopy(self.epochs.get_data())
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
@@ -94,9 +98,10 @@ class MLModel:
         self.scaler.transform(self.features_mat)
         # trial rejection
         self.features_mat = self.trials_rejection(self.features_mat)
-        score, feature_num = self.cross_val()  # get best feature number
+        # score, feature_num = self.cross_val()  # get best feature number
         # model creation for the online prediction
-        self.select_features = SelectKBest(mutual_info_classif, k=feature_num).fit(self.features_mat, self.labels)
+        self.select_features = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).\
+            fit(self.features_mat, self.labels)
         # extract best features
         self.features_mat = self.select_features.transform(self.features_mat)
         # Prepare for online classification
@@ -146,7 +151,7 @@ class MLModel:
         # Trials rejection
         # features_mat_test = self.trials_rejection(features_mat_test)
         if self.clf is None:
-            self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')  # maybe make more dynamic to user
+            self.clf = RandomForestClassifier()  # maybe make more dynamic to user
             self.clf.fit(self.features_mat, self.labels)  # create new model (not necessary in new recordings)
         # select features on test set
         features_mat_test = self.select_features.transform(features_mat_test)
