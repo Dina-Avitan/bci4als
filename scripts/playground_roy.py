@@ -71,14 +71,14 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\10\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\9\unfiltered_model.pickle')
     #
 
     labels = data2.labels
     data = data2.epochs.get_data()
 
     rf_classifier = RandomForestClassifier()
-    mlp_classifier = MLPClassifier(hidden_layer_sizes=[100]*5)
+    mlp_classifier = MLPClassifier(hidden_layer_sizes=[80]*5)
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
 
     # # Assemble a classifier
@@ -94,9 +94,9 @@ def load_eeg():
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
-    for feat_num in [3]:#range(1, int(math.sqrt(data.shape[0]))):
-        bandpower_features_selected = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).fit_transform(bandpower_features_wtf, labels)
-        # bandpower_features_selected = SelectKBest(mutual_info_classif, k=feat_num+1).fit_transform(bandpower_features_wtf, labels)
+    for feat_num in range(1, int(math.sqrt(data.shape[0]))):
+        # bandpower_features_selected = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).fit_transform(bandpower_features_wtf, labels)
+        bandpower_features_selected = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
         print(bandpower_features_selected.shape)
         scores_mix = cross_val_score(clf, bandpower_features_selected, labels, cv=3, n_jobs=1)
         scores_mix2 = cross_val_score(rf_classifier, bandpower_features_selected, labels, cv=3, n_jobs=1)

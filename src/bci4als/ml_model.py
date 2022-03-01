@@ -98,10 +98,11 @@ class MLModel:
         self.scaler.transform(self.features_mat)
         # trial rejection
         self.features_mat = self.trials_rejection(self.features_mat)
-        # score, feature_num = self.cross_val()  # get best feature number
+        score, feature_num = self.cross_val()  # get best feature number
         # model creation for the online prediction
-        self.select_features = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).\
-            fit(self.features_mat, self.labels)
+        # self.select_features = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).\
+        #     fit(self.features_mat, self.labels)
+        self.select_features = SelectKBest(mutual_info_classif, k=feature_num).fit(self.features_mat, self.labels)
         # extract best features
         self.features_mat = self.select_features.transform(self.features_mat)
         # Prepare for online classification
@@ -163,7 +164,7 @@ class MLModel:
         max_score = 1
         for feat_num in range(1, int(math.sqrt(self.features_mat.shape[0]))):
             features_mat_selected = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(self.features_mat, self.labels)
-            scores_mix = cross_val_score(self.clf, features_mat_selected, self.labels, cv=8)
+            scores_mix = cross_val_score(self.clf, features_mat_selected, self.labels, cv=5)
             if np.mean(scores_mix) * 100 > max_score:
                 max_score = np.mean(scores_mix) * 100
                 feat_num_max = feat_num
