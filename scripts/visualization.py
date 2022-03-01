@@ -5,8 +5,13 @@ import pickle
 import numpy as np
 # import pandas as pd
 import matplotlib.pyplot as plt
-# from bci4als.eeg import EEG
-# from bci4als.ml_model import MLModel
+from mne.decoding import CSP
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+from bci4als import ml_model
+#from bci4als.ml_model import MLModel
 # from bci4als.experiments.offline import OfflineExperiment
 #from mne.channels import make_standard_montage
 from sklearn.decomposition import FastICA
@@ -109,7 +114,7 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
     plt.legend()
     plt.xlim(fmin, fmax)
     plt.xlabel('frequency [Hz]')
-    plt.ylabel('PSD- semilogy Scale')#[V**2/Hz]?
+    plt.ylabel('PSD')#[V**2/Hz]?
     plt.show()
 
 def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
@@ -191,6 +196,65 @@ ica.plot_sources(epochs, show_scrollbars=False)
 plt.show()
 print()
 """
+def get_feature_mat(model):
+    # define parameters
+    fs = 125
+    bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    # get data
+    data = model.epochs.get_data()
+    class_labels = model.labels
+    feature_labels = []
+    # get features
+    # CSP
+    lda = LinearDiscriminantAnalysis()
+    csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
+    csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, class_labels)
+    [feature_labels.append(f'CSP_Component{i}') for i in range(csp_features.shape[1])]
+    # Bandpower
+    bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in model.epochs.ch_names]
+    # relative bandpower
+    bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in model.epochs.ch_names]
+    # hjorthMobility
+    hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    [feature_labels.append(f'hjorthMobility_{chan}') for chan in model.epochs.ch_names]
+    # LZC
+    LZC_features = ml_model.MLModel.LZC(data)
+    [feature_labels.append(f'LZC_{chan}') for chan in model.epochs.ch_names]
+    # DFA
+    DFA_features = ml_model.MLModel.DFA(data)
+    [feature_labels.append(f'DFA_{chan}') for chan in model.epochs.ch_names]
+    # get all of them in one matrix
+    features_mat = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel,
+                                   hjorthMobility_features,LZC_features,DFA_features), axis=1)
+    scaler = StandardScaler()
+    scaler.fit(features_mat)
+    return features_mat, class_labels, feature_labels
+
+def histo_histo(features_mat,class_labels, features_labels):
+    right_indices = [i for i in range(len(class_labels)) if class_labels[i] == 0]
+    left_indices = [i for i in range(len(class_labels)) if class_labels[i] == 1]
+    idle_indices = [i for i in range(len(class_labels)) if class_labels[i] == 2]
+    num_plot = 0
+    for subplt in range(0,features_mat.shape[1],12):
+        num_plot += 1
+        fig, axs = plt.subplots(3, 4, figsize=(16, 10), facecolor='w', edgecolor='k')
+        #fig.subplots_adjust(hspace=.5, wspace=.001)
+        axs = axs.ravel()
+        for feature in range(subplt, min(subplt+12,features_mat.shape[1])):#features_mat.shape[1]):
+            x = features_mat[:,feature]
+            right = [x[i] for i in right_indices]
+            left = [x[i] for i in left_indices]
+            idle = [x[i] for i in idle_indices]
+            axs[feature-subplt].hist(right,bins=30, alpha=0.4, label='right')
+            axs[feature-subplt].hist(left,bins=30, alpha=0.4, label='left')
+            axs[feature-subplt].hist(idle,bins=30, alpha=0.4, label='idle')
+            axs[feature-subplt].set_title(features_labels[feature],size='large',fontweight='bold')
+            axs[feature-subplt].legend(loc='upper right')
+        fig.suptitle(f'Features histograms {num_plot}',size='xx-large',fontweight='bold')
+        fig.text(0.04, 0.5, 'Probability', va='center', rotation='vertical',size='xx-large',fontweight='bold')
+        plt.show()
 
  # Ofir's data
 # EEG = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\EEG.mat')
@@ -217,44 +281,48 @@ print()
 #         final_data = np.vstack((final_data, new_data[np.newaxis]))
 # data = final_data
 
-data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\3\unfiltered_model.pickle')
-data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\3\trials.pickle')
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\unfiltered_model.pickle')
+data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
+raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
+plot_psd_classes(raw_model)
+features_mat, class_lables, features_lables = get_feature_mat(data2)
+histo_histo(features_mat, class_lables, features_lables)
 #plot_raw_elec(data3, elec_name='all',range_time = 'all')
-ICA(data2)
+#ICA(data2)
 # plot_elec_model(data2, elec_num='all',range_time = 'all')
 # plot_elec_model_ica(data2, elec_num='all',range_time = 'all')
 # plot_elec_model(data2, elec_num='all',range_time = (0,3))
 # plot_elec_model_ica(data2, elec_num='all',range_time = (0,2400))
-labels = data2.labels
-data = data2.epochs.get_data()
-perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
-C3_not_laplacian = data[1][perm_c3[0]]
-plt.plot(C3_not_laplacian)
-#plt.show()
-plt.plot(data[1][perm_c3[5]])
-#plt.show()
-plt.plot(data[1])
-#plt.show()
-for trial in range(data.shape[0]):
-    # C3
-    data[trial][perm_c3[0]] = (data[trial][perm_c3[0]]-data[trial][perm_c3[0]].mean())-\
-                              (((data[trial][perm_c3[1]]-data[trial][perm_c3[1]].mean())
-                              + (data[trial][perm_c3[2]]-data[trial][perm_c3[2]].mean())
-                              + (data[trial][perm_c3[3]]-data[trial][perm_c3[3]].mean())
-                              + (data[trial][perm_c3[4]]-data[trial][perm_c3[4]].mean())) / 4)
-    # C4
-    data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
-                              (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
-                              + (data[trial][perm_c3[7]]  -data[trial][perm_c3[7]].mean())
-                              + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
-                              + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
-    new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
-    if trial == 0:
-        final_data = new_data[np.newaxis]
-    else:
-        final_data = np.vstack((final_data, new_data[np.newaxis]))
-one_tr = final_data[1,:,:]
-one_tr = one_tr.transpose()
-plt.plot(one_tr)
+# labels = data2.labels
+# data = data2.epochs.get_data()
+# perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
+# C3_not_laplacian = data[1][perm_c3[0]]
+# plt.plot(C3_not_laplacian)
+# #plt.show()
+# plt.plot(data[1][perm_c3[5]])
+# #plt.show()
+# plt.plot(data[1])
+# #plt.show()
+# for trial in range(data.shape[0]):
+#     # C3
+#     data[trial][perm_c3[0]] = (data[trial][perm_c3[0]]-data[trial][perm_c3[0]].mean())-\
+#                               (((data[trial][perm_c3[1]]-data[trial][perm_c3[1]].mean())
+#                               + (data[trial][perm_c3[2]]-data[trial][perm_c3[2]].mean())
+#                               + (data[trial][perm_c3[3]]-data[trial][perm_c3[3]].mean())
+#                               + (data[trial][perm_c3[4]]-data[trial][perm_c3[4]].mean())) / 4)
+#     # C4
+#     data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
+#                               (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
+#                               + (data[trial][perm_c3[7]]  -data[trial][perm_c3[7]].mean())
+#                               + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
+#                               + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
+#     new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
+#     if trial == 0:
+#         final_data = new_data[np.newaxis]
+#     else:
+#         final_data = np.vstack((final_data, new_data[np.newaxis]))
+# one_tr = final_data[1,:,:]
+# one_tr = one_tr.transpose()
+# plt.plot(one_tr)
 #plt.show()
 #for trial in range(data.shape[0]):
