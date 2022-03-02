@@ -1,28 +1,23 @@
-# import pickle
+
 import mne
-# import os
+from mne.preprocessing import ICA
 import pickle
 import numpy as np
-# import pandas as pd
+import pandas as pd
 import matplotlib.pyplot as plt
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
 from bci4als import ml_model
-#from bci4als.ml_model import MLModel
-# from bci4als.experiments.offline import OfflineExperiment
-#from mne.channels import make_standard_montage
 from sklearn.decomposition import FastICA
 import scipy
 from scipy import signal
-# import matplotlib as mpl
-# from matplotlib import cm
 import scipy
 import scipy.io
-import pandas as pd
 from copy import copy
+
+
 def plot_raw_elec(trials, elec_name='all',range_time = 'all'):
     '''
     Args:
@@ -159,7 +154,7 @@ def plot_spectrogram(spec_dict,elec):
     plt.colorbar(im, ax=axs.ravel().tolist())
     #plt.show()
 
-def ICA(unfiltered_model):
+def ICA_noam(unfiltered_model):
     # ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
     trials = unfiltered_model.epochs.get_data()
     all_sig = [trials[i] for i in range(len(trials))]
@@ -177,25 +172,34 @@ def ICA(unfiltered_model):
     ica_data = transformer.inverse_transform(X_transformed, copy=True)
     return ica_data
 
-"""
-from data_utils import load_recordings
-import mne
-from pipeline import get_epochs
-from mne.preprocessing import ICA
-from Marker import Marker
-import matplotlib.pyplot as plt
+def ICA_check(unfiltered_model):
+    data = unfiltered_model.epochs
+    epochs = data.copy()
+    #epochs.filter(1, 40)
+    ica = ICA(n_components=10, max_iter='auto', random_state=97)
+    ica.fit(epochs)
+    ica.plot_sources(epochs,start=0, stop=6, show_scrollbars=False)
+    ica.plot_components(title='ICA components')
+    to_exclude = input("\nEnter a list of the numbers of the components to exclude: ")
+    to_exclude = to_exclude.strip(']')
+    to_exclude = [int(i) for i in to_exclude.strip('[').split(',')]
+    if to_exclude:
+        ica.exclude = to_exclude
+    ica.apply(epochs)
+    data.plot(scalings=10)
+    epochs.plot(scalings=10)
+    before = epochs_to_raw(data)
+    after=epochs_to_raw(epochs)
+    before.plot(scalings=10)
+    after.plot(scalings=10)
+def ICA_perform(model,to_exclude):
+    epochs = model.epochs
+    ica = ICA(n_components=10, max_iter='auto', random_state=97)
+    ica.fit(epochs)
+    ica.exclude = to_exclude
+    ica.apply(epochs)
+    return epochs
 
-raw, rec_params = load_recordings("David7")
-events = mne.find_events(raw)
-epochs = mne.Epochs(raw, events, Marker.all(), tmin=0, tmax=rec_params["trial_duration"], picks="data",baseline=(0, 0))
-epochs.load_data()
-epochs.filter(7, 30)
-ica = ICA(n_components=10, max_iter='auto', random_state=97)
-ica.fit(epochs)
-ica.plot_sources(epochs, show_scrollbars=False)
-plt.show()
-print()
-"""
 def get_feature_mat(model):
     # define parameters
     fs = 125
@@ -256,39 +260,36 @@ def histo_histo(features_mat,class_labels, features_labels):
         fig.text(0.04, 0.5, 'Probability', va='center', rotation='vertical',size='xx-large',fontweight='bold')
         plt.show()
 
- # Ofir's data
-# EEG = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\EEG.mat')
-# trainingVec = scipy.io.loadmat(r'C:\Users\pc\Desktop\bci4als\scripts\trainingVec.mat')
-# data = EEG['EEG']
-# labels = np.ravel(trainingVec['trainingVec'].T)
-#  # data should be trails X electrodes X samples.
-# data = np.transpose(data, (2, 0, 1))
-#
-# final_data = []
-#
-# for trial in range(data.shape[0]):
-#     # C4
-#     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-#                           data[trial][9]) / 4
-#
-#     # C4
-#     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-#                           data[trial][10]) / 4
-#     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-#     if trial == 0:
-#         final_data = new_data[np.newaxis]
-#     else:
-#         final_data = np.vstack((final_data, new_data[np.newaxis]))
-# data = final_data
+def epochs_to_raw(epochs):
+    trials = epochs.get_data()
+    data = [trials[i] for i in range(len(trials))]
+    data = np.concatenate(data, 1)
+    info= mne.create_info(ch_names=epochs.ch_names,sfreq= 125 , ch_types='eeg')
+    raw = mne.io.RawArray(data, info)
+    return raw
 
-data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\unfiltered_model.pickle')
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\19\unfiltered_model.pickle')
 data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
 raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
-plot_psd_classes(raw_model)
-features_mat, class_lables, features_lables = get_feature_mat(data2)
-histo_histo(features_mat, class_lables, features_lables)
+#raw_fif = mne.io.read_raw_fif(r'C:\Users\pc\Desktop\raw.fif')
+#
+#epochs_to_raw(data2.epochs)
+ICA_mne(data2)
+"""
+%matplotlib qt
+%gui qt
+mne.viz.set_browser_backend('qt')
+"""
+
+# plot_psd_classes(raw_model)
+# features_mat, class_lables, features_lables = get_feature_mat(data2)
+# histo_histo(features_mat, class_lables, features_lables)
+
+
+
+
 #plot_raw_elec(data3, elec_name='all',range_time = 'all')
-#ICA(data2)
+#ICA_noam(data2)
 # plot_elec_model(data2, elec_num='all',range_time = 'all')
 # plot_elec_model_ica(data2, elec_num='all',range_time = 'all')
 # plot_elec_model(data2, elec_num='all',range_time = (0,3))
@@ -326,3 +327,6 @@ histo_histo(features_mat, class_lables, features_lables)
 # plt.plot(one_tr)
 #plt.show()
 #for trial in range(data.shape[0]):
+# data=data2.epochs
+# data.plot(picks=data.picks, scalings=None, n_epochs=1, n_channels=len(data.ch_names))#, title='noam', events=data.events, event_colors=None, order=None, show=True, block=False, decim='auto', noise_cov=None, butterfly=False)
+
