@@ -3,24 +3,26 @@
 import copy
 import math
 from tkinter import filedialog, Tk
-
+from sklearn.linear_model import LogisticRegression, Lasso
+from sklearn.feature_selection import SelectFromModel
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import sklearn.decomposition
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import ExtraTreesClassifier, AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest, chi2, mutual_info_classif, SelectFromModel
 import scipy
 import scipy.io
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-
+from skfeature.function.similarity_based import fisher_score
 from bci4als import ml_model
 from sklearn import svm
-from sklearn.model_selection import cross_val_score, ShuffleSplit, train_test_split
+from sklearn.model_selection import cross_val_score, ShuffleSplit, train_test_split, GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -44,7 +46,7 @@ def load_eeg():
     max_score = 1
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
     # clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=50, random_state=0, max_iter=400)
-
+    #
     # # Ofir's data
     # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
     # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
@@ -71,42 +73,72 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam\9\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\20\trained_model.pickle')
     #
 
     labels = data2.labels
     data = data2.epochs.get_data()
 
-    rf_classifier = RandomForestClassifier()
-    mlp_classifier = MLPClassifier(hidden_layer_sizes=[80]*5)
+    rf_classifier = RandomForestClassifier(random_state=0)
+    mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam',hidden_layer_sizes=[80]*5))
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
+    ada_classifier = KNeighborsClassifier()
 
     # # Assemble a classifier
     lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
+    csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
     csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-    # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
-    # LZC_features = ml_model.MLModel.LZC(data)
-    # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
-    scaler = StandardScaler()
-    scaler.fit(bandpower_features_wtf)
-    bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
+    hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    LZC_features = ml_model.MLModel.LZC(data)
+    DFA_features = ml_model.MLModel.DFA(data)
+    bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel,
+                 hjorthMobility_features,LZC_features,DFA_features), axis=1)
+    # scaler = StandardScaler()
+    # scaler.fit(bandpower_features_wtf)
+    # bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
     for feat_num in range(1, int(math.sqrt(data.shape[0]))):
         # bandpower_features_selected = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).fit_transform(bandpower_features_wtf, labels)
-        bandpower_features_selected = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
-        print(bandpower_features_selected.shape)
-        scores_mix = cross_val_score(clf, bandpower_features_selected, labels, cv=3, n_jobs=1)
-        scores_mix2 = cross_val_score(rf_classifier, bandpower_features_selected, labels, cv=3, n_jobs=1)
-        scores_mix3 = cross_val_score(mlp_classifier, bandpower_features_selected, labels, cv=3, n_jobs=1)
-        scores_mix4 = cross_val_score(xgb_classifier, bandpower_features_selected, labels, cv=3, n_jobs=1)
-        X_train, X_test, y_train, y_test = train_test_split(bandpower_features_selected, labels, random_state = 0)
+        # bandpower_features_selected = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(bandpower_features_wtf, labels)
+        # bandpower_features_selected = bandpower_features_wtf[:,fisher_score.fisher_score(bandpower_features_wtf,labels)[0:feat_num ]]
+        #lasso
+        # logistic = LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0).fit(bandpower_features_wtf,labels)
+        # model = SelectFromModel(logistic, prefit=True)
+        # bandpower_features_selected = model.transform(bandpower_features_wtf)
+        # bandpower_features_selected = bandpower_features_selected[:,np.round(np.var(bandpower_features_selected,axis=0))!=0]
+        # different lasso
+        X_train, X_test, y_train, y_test = train_test_split(bandpower_features_wtf, labels, random_state = 0)
+        pipeline = Pipeline([
+            ('scaler', StandardScaler()),
+            ('model', Lasso())
+        ])
+        search = GridSearchCV(pipeline,
+                              {'model__alpha': np.arange(0.1, 10, 0.1)},
+                              cv=5, scoring="neg_mean_squared_error", verbose=3
+                              )
+        search.fit(X_train, y_train)
+        search.best_params_
+        coefficients = search.best_estimator_.named_steps['model'].coef_
+        importance = np.abs(coefficients)
+        X_train = X_train[:, importance != 0]
+        X_test = X_test[:, importance != 0]
+        # bandpower_features_selected = SelectKBest(mutual_info_classif, k=int(math.sqrt(data.shape[0]))).fit_transform(bandpower_features_selected, labels)
+        # scaler = StandardScaler()
+        # scaler.fit(bandpower_features_selected)
+        # bandpower_features_selected = scaler.transform(bandpower_features_selected)
+        # print(bandpower_features_selected.shape)
+        # scores_mix = cross_val_score(clf, bandpower_features_selected, labels, cv=5, n_jobs=1)
+        # scores_mix2 = cross_val_score(rf_classifier, bandpower_features_selected, labels, cv=5, n_jobs=1)
+        # scores_mix3 = cross_val_score(mlp_classifier, bandpower_features_selected, labels, cv=5, n_jobs=1)
+        # scores_mix4 = cross_val_score(xgb_classifier, bandpower_features_selected, labels, cv=5, n_jobs=1)
+        # scores_mix5 = cross_val_score(ada_classifier, bandpower_features_selected, labels, cv=5, n_jobs=1)
+
         clf.fit(X_train, y_train)
         rf_classifier.fit(X_train, y_train)
         mlp_classifier.fit(X_train, y_train)
         xgb_classifier.fit(X_train, y_train)
+        ada_classifier.fit(X_train, y_train)
         ConfusionMatrixDisplay.from_estimator(clf, X_test, y_test, normalize='true')
         plt.show()
         ConfusionMatrixDisplay.from_estimator(rf_classifier, X_test, y_test, normalize='true')
@@ -115,16 +147,19 @@ def load_eeg():
         plt.show()
         ConfusionMatrixDisplay.from_estimator(xgb_classifier, X_test, y_test, normalize='true')
         plt.show()
+        ConfusionMatrixDisplay.from_estimator(ada_classifier, X_test, y_test, normalize='true')
+        plt.show()
 
-        (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
-        (print(f"RandomForest rate is: {np.mean(scores_mix2)*100}%"))
-        (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
-        (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
+        # (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
+        # (print(f"RandomForest rate is: {np.mean(scores_mix2)*100}%"))
+        # (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
+        # (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
+        # (print(f"ADA rate is: {np.mean(scores_mix5)*100}%"))
 
-        if np.mean(scores_mix)*100 > max_score:
-            max_score = np.mean(scores_mix)*100
-            feat_num_max = feat_num
-    print(max_score, feat_num_max)
+        # if np.mean(scores_mix)*100 > max_score:
+        #     max_score = np.mean(scores_mix)*100
+        #     feat_num_max = feat_num
+    # print(max_score, feat_num_max)
 def get_feature_mat(model):
     # define parameters
     fs = 125

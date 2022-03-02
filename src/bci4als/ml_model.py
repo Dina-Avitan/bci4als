@@ -42,7 +42,7 @@ class MLModel:
         self.labels: List[int] = labels
         self.channel_removed: List[str] = channel_removed
         self.debug = True
-        self.clf = RandomForestClassifier()  # maybe make more dynamic to user
+        self.clf = RandomForestClassifier(random_state=0)  # maybe make more dynamic to user
         self.features_mat = None
         self.epochs = None
         self.raw_trials = None
@@ -84,7 +84,7 @@ class MLModel:
         This function will re-learn the model's feature mat and clf object which represents the model itself
         """
         # pick classifier
-        self.clf = RandomForestClassifier()
+        self.clf = RandomForestClassifier(random_state=0)
         # Extract spectral features
         data = copy.deepcopy(self.epochs.get_data())
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
@@ -152,7 +152,7 @@ class MLModel:
         # Trials rejection
         # features_mat_test = self.trials_rejection(features_mat_test)
         if self.clf is None:
-            self.clf = RandomForestClassifier()  # maybe make more dynamic to user
+            self.clf = RandomForestClassifier(random_state=0)  # maybe make more dynamic to user
             self.clf.fit(self.features_mat, self.labels)  # create new model (not necessary in new recordings)
         # select features on test set
         features_mat_test = self.select_features.transform(features_mat_test)
