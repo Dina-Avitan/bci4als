@@ -170,6 +170,25 @@ def permutation_func():
         print(f"Prediction rate is: {np.mean(scores_mix) * 100}%")
         print(max_score, feat_num_max)
 
+def laplacian(model):
+    perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
+    data = model.epochs.get_data()
+    for trial in range(data.shape[0]):
+        # C3
+        data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
+                              data[trial][perm_c3[4]]) / 2
+        # C4
+        data[trial][perm_c3[5]] -= (data[trial][perm_c3[6]] + data[trial][perm_c3[7]] + data[trial][perm_c3[8]] +
+                              data[trial][perm_c3[9]]) / 2
+        new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
+        # new_data = data[trial]
+        if trial == 0:
+            final_data = new_data[np.newaxis]
+        else:
+            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    data = final_data
+    return data
+
 def ICA_perform(model,to_exclude):
     epochs = model.epochs
     ica = ICA(n_components=10, max_iter='auto', random_state=97)

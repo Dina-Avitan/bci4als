@@ -173,32 +173,62 @@ def ICA_noam(unfiltered_model):
     return ica_data
 
 def ICA_check(unfiltered_model):
+    """
+    This function is for visualization the ICA process and for choosing coordinates to exclude
+    Args:
+        unfiltered_model: A model, before ICA transform
+    for GUI: run this lines in the console:
+             %matplotlib qt
+             %gui qt
+    """
     data = unfiltered_model.epochs
     epochs = data.copy()
-    #epochs.filter(1, 40)
-    ica = ICA(n_components=10, max_iter='auto', random_state=97)
+    ica = ICA(n_components=10, max_iter='auto', random_state=0)
     ica.fit(epochs)
-    ica.plot_sources(epochs,start=0, stop=6, show_scrollbars=False)
-    ica.plot_components(title='ICA components')
+    ica.plot_sources(epochs,start=0, stop=6, show_scrollbars=False,title='ICA components')
+    ica.plot_components(title='ICA components-topoplot')
     to_exclude = input("\nEnter a list of the numbers of the components to exclude: ")
     to_exclude = to_exclude.strip(']')
     to_exclude = [int(i) for i in to_exclude.strip('[').split(',')]
     if to_exclude:
         ica.exclude = to_exclude
     ica.apply(epochs)
-    data.plot(scalings=10)
-    epochs.plot(scalings=10)
-    before = epochs_to_raw(data)
-    after=epochs_to_raw(epochs)
-    before.plot(scalings=10)
-    after.plot(scalings=10)
+    data.plot(scalings=10,title='Before ICA')
+    epochs.plot(scalings=10, title='After ICA')
+    # before = epochs_to_raw(data)
+    # after=epochs_to_raw(epochs)
+    # before.plot(scalings=10)
+    # after.plot(scalings=10)
+
 def ICA_perform(model,to_exclude):
+    """
+    Args:
+        model: the model before ICA transform
+        to_exclude: (list) list of the coordinates numbers to exclude
+
+    Returns: epochs array after ICA transform
+    """
     epochs = model.epochs
     ica = ICA(n_components=10, max_iter='auto', random_state=97)
     ica.fit(epochs)
     ica.exclude = to_exclude
     ica.apply(epochs)
     return epochs
+
+def epochs_z_score(epochs):
+    """
+    this function is for normalize all the electrods in epochs array by Z_score
+    Args:
+        epochs: epochs array
+    Returns: (ndarray) the data after normalizing all the electrods
+    """
+    data=epochs.get_data()
+    for i in range(len(data)):
+        scaler = StandardScaler()
+        scaler.fit(data[i].transpose())
+        array= scaler.transform(data[i].transpose())
+        data[i]= array.transpose()
+    return data
 
 def get_feature_mat(model):
     # define parameters
@@ -244,7 +274,7 @@ def histo_histo(features_mat,class_labels, features_labels):
     for subplt in range(0,features_mat.shape[1],12):
         num_plot += 1
         fig, axs = plt.subplots(3, 4, figsize=(16, 10), facecolor='w', edgecolor='k')
-        #fig.subplots_adjust(hspace=.5, wspace=.001)
+        #fig.subplots_adjust(hspace=.5, wspace=.001) -0.65 -1.227
         axs = axs.ravel()
         for feature in range(subplt, min(subplt+12,features_mat.shape[1])):#features_mat.shape[1]):
             x = features_mat[:,feature]
@@ -268,13 +298,18 @@ def epochs_to_raw(epochs):
     raw = mne.io.RawArray(data, info)
     return raw
 
-data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\19\unfiltered_model.pickle')
+def ndarray_to_raw(data, ch_names):
+    comb_data = [data[i] for i in range(len(data))]
+    comb_data = np.concatenate(data, 1)
+    info= mne.create_info(ch_names=ch_names,sfreq= 125 , ch_types='eeg')
+    raw = mne.io.RawArray(comb_data, info)
+    return raw
+
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\3\unfiltered_model.pickle')
 data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
 raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
-#raw_fif = mne.io.read_raw_fif(r'C:\Users\pc\Desktop\raw.fif')
 #
 #epochs_to_raw(data2.epochs)
-ICA_mne(data2)
 """
 %matplotlib qt
 %gui qt
