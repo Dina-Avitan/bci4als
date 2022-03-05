@@ -3,6 +3,8 @@
 import copy
 import math
 from tkinter import filedialog, Tk
+
+from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression, Lasso
 from sklearn.feature_selection import SelectFromModel, SequentialFeatureSelector
 import pandas as pd
@@ -18,7 +20,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from skfeature.function.similarity_based import fisher_score
 from sklearn.tree import DecisionTreeClassifier
-
+from mne.decoding import UnsupervisedSpatialFilter
 from bci4als import ml_model
 from sklearn import svm
 from sklearn.model_selection import cross_val_score,  train_test_split
@@ -68,7 +70,7 @@ def load_eeg():
         # after=epochs_to_raw(epochs)
         # before.plot(scalings=10)
         # after.plot(scalings=10)
-    def ICA_perform(model, to_exclude):
+    def ICA_perform(model):
         """
         Args:
             model: the model before ICA transform
@@ -79,7 +81,8 @@ def load_eeg():
         epochs = model.epochs
         ica = ICA(n_components=10, max_iter='auto', random_state=97)
         ica.fit(epochs)
-        ica.exclude = to_exclude
+        # ica.exclude = to_exclude
+        ica.detect_artifacts(epochs)
         ica.apply(epochs)
         return epochs
     def trials_rejection(feature_mat, labels):
@@ -88,7 +91,7 @@ def load_eeg():
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.std(x,axis=1) > 2  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.std(x,axis=1) > 1.8  # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -98,6 +101,7 @@ def load_eeg():
 
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    # bands = np.matrix('1 4; 7 12; 12 15; 17 22; 1 40; 25 40')
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
     # clf = LinearDiscriminantAnalysis(solver='lsqr',shrinkage='auto', tol=1e-6)
     # clf = LinearDiscriminantAnalysis(tol=1e-8)
@@ -129,13 +133,13 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\3\unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\20\trained_model.pickle')
     #
     labels = data2.labels
     # clean data or not
-    data = data2.epochs.get_data()
-    data = ICA_perform(data2,[0]).get_data()  # ICA
-    # data = epochs_z_score(data2.epochs)  # z score?
+    # data = data2.epochs.get_data()
+    data = ICA_perform(data2)  # ICA
+    data = epochs_z_score(data)  # z score?
 
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
@@ -143,16 +147,16 @@ def load_eeg():
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
     ada_classifier = AdaBoostClassifier(random_state=0)
 
-    # Get CSP features
+    # # Get CSP features
     csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    csp_features = csp.fit_transform(data, labels)
+    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(11), average=False)),('asdd',csp)]).fit_transform(data, labels)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-    hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
-    LZC_features = ml_model.MLModel.LZC(data)
-    DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
+    # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    # LZC_features = ml_model.MLModel.LZC(data)
+    # DFA_features = ml_model.MLModel.DFA(data)
+    bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
@@ -190,7 +194,7 @@ def load_eeg():
     scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    print(scores_mix5)
+    print(scores_mix)
 
     #print scores
     (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
