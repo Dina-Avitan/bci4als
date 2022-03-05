@@ -4,7 +4,7 @@ import copy
 import math
 from tkinter import filedialog, Tk
 from sklearn.linear_model import LogisticRegression, Lasso
-from sklearn.feature_selection import SelectFromModel
+from sklearn.feature_selection import SelectFromModel, SequentialFeatureSelector
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,7 +24,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
-from mlxtend.feature_selection import SequentialFeatureSelector
+from mne.preprocessing import ICA
 
 def playground():
     # load eeg data
@@ -38,6 +38,21 @@ def playground():
 
 
 def load_eeg():
+    def ICA_perform(model, to_exclude):
+        """
+        Args:
+            model: the model before ICA transform
+            to_exclude: (list) list of the coordinates numbers to exclude
+
+        Returns: epochs array after ICA transform
+        """
+        epochs = model.epochs
+        ica = ICA(n_components=10, max_iter='auto', random_state=97)
+        ica.fit(epochs)
+        ica.exclude = to_exclude
+        ica.apply(epochs)
+        return epochs
+
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
@@ -71,89 +86,98 @@ def load_eeg():
     # Our data
     data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\20\trained_model.pickle')
     #
-
     labels = data2.labels
+    # clean data or not
     data = data2.epochs.get_data()
+    # data = ICA_perform(data2,[5]).get_data()  # ICA
+    # data = epochs_z_score(data2.epochs)  # z score?
 
-    rf_classifier = RandomForestClassifier(n_estimators=800,random_state=0)
+    # Initiate classifiers
+    rf_classifier = RandomForestClassifier(n_estimators=1600,random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam',hidden_layer_sizes=[80]*5,max_iter=400))
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
     ada_classifier = AdaBoostClassifier()
 
-    # # Assemble a classifier
-    lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=3, reg='ledoit_wolf', log=False, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
+    # seperate the data before feature selection
+    indices = np.arange(data.shape[0])
+    X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(data, labels,indices, random_state=0)
+
+    # Get CSP features
+    csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
+    csp_features = csp.fit_transform(data, labels)
+    # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     LZC_features = ml_model.MLModel.LZC(data)
     DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel,
-                 hjorthMobility_features,LZC_features,DFA_features), axis=1)
+    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel,
+                                             hjorthMobility_features, LZC_features, DFA_features), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
-    for feat_num in range(1, int(math.sqrt(data.shape[0]))):
-        # seperate the data before feature selection
-        X_train, X_test, y_train, y_test = train_test_split(bandpower_features_wtf, labels, random_state = 0)
 
-        # Define selection algorithms
-        rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
-        mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(data.shape[0])))
-        fisher_select = bandpower_features_wtf[:, fisher_score.fisher_score(bandpower_features_wtf,
-                                                                            labels)[0:int(math.sqrt(data.shape[0]))]]
+    # Define selection algorithms
+    rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
+    mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(data.shape[0])))
+    fisher_select = bandpower_features_wtf[:, fisher_score.fisher_score(bandpower_features_wtf,
+                                                                        labels)[0:int(math.sqrt(data.shape[0]))]]
 
-        # Define Pipelines
-        model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
-        # define seq selections
-        seq_select_clf = SequentialFeatureSelector(clf, k_features=int(math.sqrt(X_train.shape[0])), forward=True, n_jobs=1)
-        seq_select_RF = SequentialFeatureSelector(rf_classifier, k_features=int(math.sqrt(X_train.shape[0])), forward=True, n_jobs=1)
-        seq_select_MLP = SequentialFeatureSelector(mlp_classifier, k_features=int(math.sqrt(X_train.shape[0])), forward=True, n_jobs=1)
-        seq_select_XGB = SequentialFeatureSelector(xgb_classifier, k_features=int(math.sqrt(X_train.shape[0])), forward=True, n_jobs=1)
+    # Define Pipelines
+    model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
+    # define seq selections
+    seq_select_clf = SequentialFeatureSelector(clf, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
+    seq_select_RF = SequentialFeatureSelector(rf_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
+    seq_select_MLP = SequentialFeatureSelector(mlp_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])),  n_jobs=1)
+    seq_select_XGB = SequentialFeatureSelector(xgb_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
 
-        pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
-        # make pipelines for every classifier
-        pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
-        pipeline_MLP = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', mlp_classifier)])
-        pipeline_XGB = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', xgb_classifier)])
-        pipeline_ADA = Pipeline([('select',  mi_select), ('classify', ada_classifier)])
-        # get scores with CV for each pipeline
-        scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-        scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-        scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-        scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-        scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-        #print scores
-        (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
-        (print(f"RandomForest rate is: {np.mean(scores_mix2)*100}%"))
-        (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
-        (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
-        (print(f"ADA rate is: {np.mean(scores_mix5)*100}%"))
+    pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
+    # make pipelines for every classifier
+    pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
+    pipeline_MLP = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', mlp_classifier)])
+    pipeline_XGB = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', xgb_classifier)])
+    pipeline_ADA = Pipeline([('select',  mi_select), ('classify', ada_classifier)])
+    # get scores with CV for each pipeline
+    scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
 
-        # fit pipelines for the confusion matrix
-        pipeline_SVM.fit(X_train, y_train)
-        pipeline_RF.fit(X_train, y_train)
-        pipeline_MLP.fit(X_train, y_train)
-        pipeline_XGB.fit(X_train, y_train)
-        pipeline_ADA.fit(X_train, y_train)
-        # get confusion matrices
-        ConfusionMatrixDisplay.from_estimator(pipeline_SVM, X_test, y_test, normalize='true')
-        plt.show()
-        ConfusionMatrixDisplay.from_estimator(pipeline_RF, X_test, y_test, normalize='true')
-        plt.show()
-        ConfusionMatrixDisplay.from_estimator(pipeline_MLP, X_test, y_test, normalize='true')
-        plt.show()
-        ConfusionMatrixDisplay.from_estimator(pipeline_XGB, X_test, y_test, normalize='true')
-        plt.show()
-        ConfusionMatrixDisplay.from_estimator(pipeline_ADA, X_test, y_test, normalize='true')
-        plt.show()
+    #print scores
+    (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
+    (print(f"RandomForest rate is: {np.mean(scores_mix2)*100}%"))
+    (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
+    (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
+    (print(f"ADA rate is: {np.mean(scores_mix5)*100}%"))
+
+    # fit pipelines for the confusion matrix and get matrices
+    pipeline_SVM.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
+                                          np.array(labels)[test_ind], normalize='true')
+    plt.show()
+
+    pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
+                                          np.array(labels)[test_ind], normalize='true')
+    plt.show()
+
+    pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
+                                          np.array(labels)[test_ind], normalize='true')
+    plt.show()
+
+    pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
+                                          np.array(labels)[test_ind], normalize='true')
+    plt.show()
+
+    pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
+                                          np.array(labels)[test_ind], normalize='true')
+    plt.show()
 
 
-        # if np.mean(scores_mix)*100 > max_score:
-        #     max_score = np.mean(scores_mix)*100
-        #     feat_num_max = feat_num
-    # print(max_score, feat_num_max)
 def get_feature_mat(model):
     # define parameters
     fs = 125
@@ -189,63 +213,6 @@ def get_feature_mat(model):
     scaler = StandardScaler()
     scaler.fit(features_mat)
     return features_mat, class_labels, feature_labels
-def permutation_func():
-    fs = 125
-    bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    max_score = 1
-    clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\4\unfiltered_model.pickle')
-    # data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\2\unfiltered_model.pickle')
-    labels = data2.labels
-    # data2.epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
-    data = data2.epochs.get_data()
-    # perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
-    # perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
-    perm_c3 = (0, 1, 2, 3, 5, 6, 4, 7, 8, 9, 10)
-
-    for trial in range(data.shape[0]):
-        # C3
-        data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
-                              data[trial][perm_c3[4]]) / 4
-        # data[trial][perm_c3[0]] = (data[trial][perm_c3[0]] - data[trial][perm_c3[0]].mean()) - \
-        #                           (((data[trial][perm_c3[1]] - data[trial][perm_c3[1]].mean())
-        #                             + (data[trial][perm_c3[2]] - data[trial][perm_c3[2]].mean())
-        #                             + (data[trial][perm_c3[3]] - data[trial][perm_c3[3]].mean())
-        #                             + (data[trial][perm_c3[4]] - data[trial][perm_c3[4]].mean())) / 4)
-        # C4
-        data[trial][perm_c3[5]] -= (data[trial][perm_c3[6]] + data[trial][perm_c3[7]] + data[trial][perm_c3[8]] +
-                              data[trial][perm_c3[9]]) / 4
-        # data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
-        #                           (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
-        #                             + (data[trial][perm_c3[7]] - data[trial][perm_c3[7]].mean())
-        #                             + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
-        #                             + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
-        new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
-        # new_data = data[trial]
-        if trial == 0:
-            final_data = new_data[np.newaxis]
-        else:
-            final_data = np.vstack((final_data, new_data[np.newaxis]))
-    data = final_data
-    # # Assemble a classifier
-    lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, labels)
-    bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
-    bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-    # bandpower_features_old = ml_model.MLModel.hjorthMobility(data)
-    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
-    scaler = StandardScaler()
-    scaler.fit(bandpower_features_wtf)
-    bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
-    bandpower_features_wtf = SelectKBest(mutual_info_classif, k=9).fit_transform(bandpower_features_wtf, labels)
-    scores_mix = cross_val_score(clf, bandpower_features_wtf, labels, cv=8)
-    print(np.mean(scores_mix)*100)
-    if np.mean(scores_mix)*100 > max_score:
-        max_score = np.mean(scores_mix)*100
-        feat_num_max = 9
-        print(f"Prediction rate is: {np.mean(scores_mix) * 100}%")
-        print(max_score, feat_num_max)
 def plot_SVM(feature_mat,labels):
     h = .02  # step size in the mesh
     C = 1.0  # SVM regularization parameter
@@ -270,9 +237,22 @@ def plot_SVM(feature_mat,labels):
     plt.title('SVC with linear kernel')
     plt.show()
 
-def ICA(ufiltered_model):
-    epochs = ufiltered_model.epochs
-    ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
+
+def epochs_z_score(epochs):
+    """
+    this function is for normalize all the electrods in epochs array by Z_score
+    Args:
+        epochs: epochs array
+    Returns: (ndarray) the data after normalizing all the electrods
+    """
+    data=epochs.get_data()
+    for i in range(len(data)):
+        scaler = StandardScaler()
+        scaler.fit(data[i].transpose())
+        array= scaler.transform(data[i].transpose())
+        data[i]= array.transpose()
+    return data
+
 
 if __name__ == '__main__':
     model = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\3\unfiltered_model.pickle')

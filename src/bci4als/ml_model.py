@@ -7,6 +7,7 @@ import mne
 import numpy
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+from sklearn.linear_model import LogisticRegression
 
 from bci4als.eeg import EEG
 import numpy as np
@@ -19,7 +20,7 @@ from sklearn.pipeline import Pipeline
 import scipy
 from sklearn import svm
 from sklearn.model_selection import cross_val_score, cross_val_predict
-from sklearn.feature_selection import SelectKBest, mutual_info_classif, SelectFromModel
+from sklearn.feature_selection import SelectKBest, mutual_info_classif, SelectFromModel, SequentialFeatureSelector
 from sklearn.preprocessing import StandardScaler
 from numba import njit
 
@@ -84,29 +85,37 @@ class MLModel:
         This function will re-learn the model's feature mat and clf object which represents the model itself
         """
         # pick classifier
-        self.clf = RandomForestClassifier(random_state=0)
+        self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
         # Extract spectral features
         data = copy.deepcopy(self.epochs.get_data())
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = self.epochs.info['sfreq']
+        # Get features
         bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-        # hjorth_complexity = self.hjorthMobility(data)
-        self.features_mat = np.concatenate((bandpower_features_rel, bandpower_features), axis=1)
+        hjorth_complexity = self.hjorthMobility(data)
+        LZC_features = self.LZC(data)
+        DFA_features = self.DFA(data)
+
+        # Get CSP features
+        csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+                  cov_est='epoch')
+        csp_features = csp.fit_transform(data, self.labels)
+
+        self.features_mat = np.concatenate((csp_features, bandpower_features_rel, bandpower_features, hjorth_complexity,
+                                            LZC_features, DFA_features), axis=1)
         # Normalize
         self.scaler.fit(self.features_mat)
         self.scaler.transform(self.features_mat)
         # trial rejection
         self.features_mat = self.trials_rejection(self.features_mat)
-        score, feature_num = self.cross_val()  # get best feature number
-        # model creation for the online prediction
-        # self.select_features = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=80)).\
-        #     fit(self.features_mat, self.labels)
-        self.select_features = SelectKBest(mutual_info_classif, k=feature_num).fit(self.features_mat, self.labels)
-        # extract best features
-        self.features_mat = self.select_features.transform(self.features_mat)
-        # Prepare for online classification
-        self.clf.fit(self.features_mat, self.labels)
+        # Prepare Pipeline
+        model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
+        seq_select_clf = SequentialFeatureSelector(self.clf, n_features_to_select=int(math.sqrt(data.shape[0])), n_jobs=1)
+        pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', self.clf)])
+
+        # Initiate Pipeline for online classification
+        self.clf = pipeline_SVM.fit(self.features_mat, self.labels)
 
     @staticmethod
     def trials_rejection(features_mat):
@@ -193,29 +202,6 @@ class MLModel:
 
         # update feature mat and fit model
         self._simple_svm()
-
-    @staticmethod
-    def extract_bandpower(data: NDArray, bands: np.matrix, fs: int):
-        bp_mat_final = pd.DataFrame()
-        for band in bands:
-            bp_mat = np.zeros((data.shape[0], data.shape[1]))
-            fmin = band.item(0)
-            fmax = band.item(1)
-            f, pxx = scipy.signal.periodogram(data, fs=fs)
-            ind_min = scipy.argmax(f > fmin) - 1
-            ind_max = scipy.argmax(f > fmax) - 1
-            bp_func = lambda power_elec: scipy.trapz(power_elec[ind_min: ind_max], f[ind_min: ind_max])
-            for trial in range(data.shape[0]):
-                bp_per_elec_per_trial = []
-                power = pxx[trial]
-                for elec in range(data.shape[1]):
-                    bp_per_elec_per_trial.append([bp_func(power[elec])])
-                bp_mat[trial] = np.asarray(bp_per_elec_per_trial).T
-            bp_concat = pd.DataFrame(bp_mat)
-            bp_mat_final = pd.concat([bp_mat_final, bp_concat], axis=1)
-        bp_mat_final.transpose().reset_index(drop=True).transpose()
-        return bp_mat_final
-
     @staticmethod
     def bandpower(data, bands, sf, window_sec=None, relative=False):
         """Compute the average power of the signal x in a specific frequency band.
