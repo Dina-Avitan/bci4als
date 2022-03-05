@@ -108,7 +108,7 @@ class MLModel:
         self.scaler.fit(self.features_mat)
         self.scaler.transform(self.features_mat)
         # trial rejection
-        self.features_mat = self.trials_rejection(self.features_mat)
+        self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
         # Prepare Pipeline
         model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
         seq_select_clf = SequentialFeatureSelector(self.clf, n_features_to_select=int(math.sqrt(data.shape[0])), n_jobs=1)
@@ -118,18 +118,19 @@ class MLModel:
         self.clf = pipeline_SVM.fit(self.features_mat, self.labels)
 
     @staticmethod
-    def trials_rejection(features_mat):
+    def trials_rejection(feature_mat, labels):
         to_remove = []
-        nan_col = np.isnan(features_mat).sum(axis=0)  # remove features with None values
+        nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: x > 2  # remove features with extreme values - 2 std over the mean
-        Z_bool = func(features_mat).sum(axis=0)
+        func = lambda x: np.std(x,axis=1) > 2  # remove features with extreme values - 2 std over the mean
+        Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
-        np.delete(features_mat, to_remove, axis=1)
-        return features_mat
+        feature_mat = np.delete(feature_mat, to_remove, axis=0)
+        labels = np.delete(labels, to_remove, axis=0)
+        return feature_mat, labels
 
 
     def _csp_lda(self):

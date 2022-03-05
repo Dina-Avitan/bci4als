@@ -17,6 +17,8 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from skfeature.function.similarity_based import fisher_score
+from sklearn.tree import DecisionTreeClassifier
+
 from bci4als import ml_model
 from sklearn import svm
 from sklearn.model_selection import cross_val_score,  train_test_split
@@ -25,6 +27,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from mne.preprocessing import ICA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 def playground():
     # load eeg data
@@ -38,6 +41,33 @@ def playground():
 
 
 def load_eeg():
+    def ICA_check(unfiltered_model):
+        """
+        This function is for visualization the ICA process and for choosing coordinates to exclude
+        Args:
+            unfiltered_model: A model, before ICA transform
+        for GUI: run this lines in the console:
+                 %matplotlib qt
+                 %gui qt
+        """
+        data = unfiltered_model.epochs
+        epochs = data.copy()
+        ica = ICA(n_components=10, max_iter='auto', random_state=0)
+        ica.fit(epochs)
+        ica.plot_sources(epochs, start=15, stop=20, show_scrollbars=False, title='ICA components')
+        ica.plot_components(title='ICA components-topoplot')
+        to_exclude = input("\nEnter a list of the numbers of the components to exclude: ")
+        to_exclude = to_exclude.strip(']')
+        to_exclude = [int(i) for i in to_exclude.strip('[').split(',')]
+        if to_exclude:
+            ica.exclude = to_exclude
+        ica.apply(epochs)
+        data.plot(scalings=10, title='Before ICA')
+        epochs.plot(scalings=10, title='After ICA')
+        # before = epochs_to_raw(data)
+        # after=epochs_to_raw(epochs)
+        # before.plot(scalings=10)
+        # after.plot(scalings=10)
     def ICA_perform(model, to_exclude):
         """
         Args:
@@ -52,10 +82,25 @@ def load_eeg():
         ica.exclude = to_exclude
         ica.apply(epochs)
         return epochs
+    def trials_rejection(feature_mat, labels):
+        to_remove = []
+        nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
+        add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
+        to_remove += add_remove
+
+        func = lambda x: np.std(x,axis=1) > 2  # remove features with extreme values - 2 std over the mean
+        Z_bool = func(feature_mat)
+        add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
+        to_remove += add_remove
+        feature_mat = np.delete(feature_mat, to_remove, axis=0)
+        labels = np.delete(labels, to_remove, axis=0)
+        return feature_mat, labels
 
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+    clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
+    # clf = LinearDiscriminantAnalysis(solver='lsqr',shrinkage='auto', tol=1e-6)
+    # clf = LinearDiscriminantAnalysis(tol=1e-8)
     # clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=50, random_state=0, max_iter=400)
     #
     # # Ofir's data
@@ -84,23 +129,19 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\20\trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\3\unfiltered_model.pickle')
     #
     labels = data2.labels
     # clean data or not
     data = data2.epochs.get_data()
-    # data = ICA_perform(data2,[5]).get_data()  # ICA
+    data = ICA_perform(data2,[0]).get_data()  # ICA
     # data = epochs_z_score(data2.epochs)  # z score?
 
     # Initiate classifiers
-    rf_classifier = RandomForestClassifier(n_estimators=1600,random_state=0)
-    mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam',hidden_layer_sizes=[80]*5,max_iter=400))
+    rf_classifier = RandomForestClassifier(random_state=0)
+    mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
-    ada_classifier = AdaBoostClassifier()
-
-    # seperate the data before feature selection
-    indices = np.arange(data.shape[0])
-    X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(data, labels,indices, random_state=0)
+    ada_classifier = AdaBoostClassifier(random_state=0)
 
     # Get CSP features
     csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
@@ -111,11 +152,17 @@ def load_eeg():
     hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     LZC_features = ml_model.MLModel.LZC(data)
     DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel,
-                                             hjorthMobility_features, LZC_features, DFA_features), axis=1)
+    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
+
+    # Trial rejection
+    bandpower_features_wtf, labels = trials_rejection(bandpower_features_wtf, labels)
+
+    # seperate the data before feature selection
+    indices = np.arange(bandpower_features_wtf.shape[0])
+    X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(bandpower_features_wtf, labels,indices, random_state=0)
 
     # Define selection algorithms
     rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
@@ -130,19 +177,20 @@ def load_eeg():
     seq_select_RF = SequentialFeatureSelector(rf_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
     seq_select_MLP = SequentialFeatureSelector(mlp_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])),  n_jobs=1)
     seq_select_XGB = SequentialFeatureSelector(xgb_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
+    seq_select_ADA = SequentialFeatureSelector(ada_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
 
     pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
-    # make pipelines for every classifier
-    pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
-    pipeline_MLP = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', mlp_classifier)])
-    pipeline_XGB = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', xgb_classifier)])
-    pipeline_ADA = Pipeline([('select',  mi_select), ('classify', ada_classifier)])
+    pipeline_RF = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', rf_classifier)])
+    pipeline_MLP = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', mlp_classifier)])
+    pipeline_XGB = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', xgb_classifier)])
+    pipeline_ADA = Pipeline([('feat_selecting', mi_select),('classify', ada_classifier)])
     # get scores with CV for each pipeline
     scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    print(scores_mix5)
 
     #print scores
     (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
