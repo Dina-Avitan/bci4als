@@ -133,7 +133,7 @@ def load_eeg():
     # data = final_data
     #
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\20\trained_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/noam/13/unfiltered_model.pickle')
     #
     labels = data2.labels
 
@@ -172,8 +172,8 @@ def load_eeg():
     # Define selection algorithms
     rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
     mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(data.shape[0])))
-    fisher_select = bandpower_features_wtf[:, fisher_score.fisher_score(bandpower_features_wtf,
-                                                                        labels)[0:int(math.sqrt(data.shape[0]))]]
+    # fisher_select = bandpower_features_wtf[:, fisher_score.fisher_score(bandpower_features_wtf,
+    #                                                                     labels)[0:int(math.sqrt(data.shape[0]))]]
 
     # Define Pipelines
     model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
@@ -308,7 +308,7 @@ def epochs_z_score(epochs):
 
 
 if __name__ == '__main__':
-    model = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\3\unfiltered_model.pickle')
+    model = pd.read_pickle(r'../recordings/noam/13/unfiltered_model.pickle')
     # playground()
     load_eeg()
     # permutation_func()
