@@ -3,7 +3,7 @@
 import copy
 import math
 from tkinter import filedialog, Tk
-
+import scipy.io
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression, Lasso
 from sklearn.feature_selection import SelectFromModel, SequentialFeatureSelector
@@ -54,7 +54,7 @@ def load_eeg():
         """
         data = unfiltered_model.epochs
         epochs = data.copy()
-        ica = ICA(n_components=10, max_iter='auto', random_state=0)
+        ica = ICA(n_components=11, max_iter='auto', random_state=0)
         ica.fit(epochs)
         ica.plot_sources(epochs, start=15, stop=20, show_scrollbars=False, title='ICA components')
         ica.plot_components(title='ICA components-topoplot')
@@ -79,9 +79,9 @@ def load_eeg():
         Returns: epochs array after ICA transform
         """
         epochs = model.epochs
-        ica = ICA(n_components=10, max_iter='auto', random_state=97)
+        ica = ICA(n_components=11, max_iter='auto', random_state=97)
         ica.fit(epochs)
-        # ica.exclude = to_exclude
+        # ica.exclude = [0,1,4]
         ica.detect_artifacts(epochs)
         ica.apply(epochs)
         return epochs
@@ -91,7 +91,7 @@ def load_eeg():
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.std(x,axis=1) > 1.8  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=0) > 1.8  # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -106,7 +106,7 @@ def load_eeg():
     # clf = LinearDiscriminantAnalysis(solver='lsqr',shrinkage='auto', tol=1e-6)
     # clf = LinearDiscriminantAnalysis(tol=1e-8)
     # clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=50, random_state=0, max_iter=400)
-    #
+
     # # Ofir's data
     # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
     # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
@@ -131,15 +131,16 @@ def load_eeg():
     #     else:
     #         final_data = np.vstack((final_data, new_data[np.newaxis]))
     # data = final_data
-
+    #
     # Our data
     data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\20\trained_model.pickle')
     #
     labels = data2.labels
-    # clean data or not
+
+    # # Choose clean data or not
     # data = data2.epochs.get_data()
-    data = ICA_perform(data2)  # ICA
-    data = epochs_z_score(data)  # z score?
+    data = ICA_perform(data2).get_data()  # ICA
+    # data = epochs_z_score(data)  # z score?
 
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
@@ -149,14 +150,14 @@ def load_eeg():
 
     # # Get CSP features
     csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(11), average=False)),('asdd',csp)]).fit_transform(data, labels)
+    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(11), average=True)),('asdd',csp)]).fit_transform(data, labels)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
