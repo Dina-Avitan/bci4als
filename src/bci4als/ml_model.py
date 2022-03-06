@@ -95,6 +95,8 @@ class MLModel:
         """
         # pick classifier
         clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+        rf_classifier = RandomForestClassifier(random_state=0)
+
         # Extract spectral features
         data = copy.deepcopy(self.epochs)
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
@@ -120,12 +122,19 @@ class MLModel:
         # trial rejection
         self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
         # Prepare Pipeline
+        mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(self.features_mat.shape[0])))
         model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
         seq_select_clf = SequentialFeatureSelector(clf, n_features_to_select=0.2, n_jobs=1)
+        # Select pipeline
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
+        pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
 
         # Initiate Pipeline for online classification
-        self.clf = pipeline_SVM.fit(self.features_mat, self.labels)
+        try:
+            self.clf = pipeline_RF.fit(self.features_mat, self.labels)
+        except ValueError:
+            pipeline_RF = Pipeline([('lasso', model), ('classify', rf_classifier)])
+            self.clf = pipeline_RF.fit(self.features_mat, self.labels)
 
     @staticmethod
     def trials_rejection(feature_mat, labels):
