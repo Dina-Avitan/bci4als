@@ -83,6 +83,7 @@ def load_eeg():
         ica.fit(epochs)
         # ica.exclude = [0,1]
         ica.detect_artifacts(epochs)
+        print(ica.exclude)
         ica.apply(epochs)
         return epochs
     def trials_rejection(feature_mat, labels):
@@ -133,7 +134,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/noam/17/unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/noam/13/unfiltered_model.pickle')
     #
     labels = data2.labels
 
@@ -143,7 +144,7 @@ def load_eeg():
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    data, _ = EEG.laplacian(data)
+    #data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
@@ -179,6 +180,7 @@ def load_eeg():
 
     # Define Pipelines
     model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
+    print(model.fit_transform(bandpower_features_wtf,labels).shape)
     # define seq selections
     seq_select_clf = SequentialFeatureSelector(clf, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
     seq_select_RF = SequentialFeatureSelector(rf_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
