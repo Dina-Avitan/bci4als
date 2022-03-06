@@ -1,3 +1,4 @@
+import copy
 import os
 import pickle
 from bci4als.eeg import EEG
@@ -27,7 +28,7 @@ def offline_experiment():
 
     # get and save raw unfiltered data
     unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])
-    unfiltered_model.epochs_extractor(eeg)
+    unfiltered_model.epochs_extractor(copy.deepcopy(eeg))
     pickle.dump(unfiltered_model, open(os.path.join(session_directory, 'unfiltered_model.pickle'), 'wb'))
 
     # do Laplacian filter
@@ -41,7 +42,7 @@ def offline_experiment():
     model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
 
     # save epochs
-    model.epochs_extractor(eeg)
+    model.epochs_extractor(copy.deepcopy(eeg))
     pickle.dump(model, open(os.path.join(session_directory, 'raw_model.pickle'), 'wb'))
 
     # train model and classify

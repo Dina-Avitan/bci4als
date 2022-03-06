@@ -133,13 +133,13 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/22/unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/22/raw_model.pickle')
     #
     labels = data2.labels
 
     # Choose clean data or not
-    # data = data2.epochs.get_data()
-    data = ICA_perform(data2).get_data()  # ICA
+    data = data2.epochs.get_data()
+    # data = ICA_perform(data2).get_data()  # ICA
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
