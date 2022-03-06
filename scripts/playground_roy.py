@@ -133,7 +133,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/22/unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/noam/17/unfiltered_model.pickle')
     #
     labels = data2.labels
 
