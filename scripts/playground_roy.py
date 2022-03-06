@@ -21,7 +21,7 @@ from sklearn.neural_network import MLPClassifier
 from skfeature.function.similarity_based import fisher_score
 from sklearn.tree import DecisionTreeClassifier
 from mne.decoding import UnsupervisedSpatialFilter
-from bci4als import ml_model
+from bci4als import ml_model, EEG
 from sklearn import svm
 from sklearn.model_selection import cross_val_score,  train_test_split
 from sklearn.pipeline import Pipeline
@@ -131,17 +131,19 @@ def load_eeg():
     #     else:
     #         final_data = np.vstack((final_data, new_data[np.newaxis]))
     # data = final_data
-    #
+
     # Our data
-    data2 = pd.read_pickle(r'../recordings/noam/13/unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/20/trained_model.pickle')
     #
     labels = data2.labels
 
-    # # Choose clean data or not
+    # Choose clean data or not
     # data = data2.epochs.get_data()
     data = ICA_perform(data2).get_data()  # ICA
     # data = epochs_z_score(data)  # z score?
 
+    #Laplacian
+    data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))

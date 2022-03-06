@@ -302,14 +302,15 @@ class EEG:
                                     data[trial]['CP2'] + data[trial]['CP6']) / 4
                 data[trial] = data[trial].drop(columns=['CP5', 'FC5', 'FC1', 'CP1', 'FC2', 'FC6', 'CP2', 'CP6'])
         else:
-            # C3
-            data[names_dict['C3']] -= (data[names_dict['FC5']] + data[names_dict['FC1']] +
-                                  data[names_dict['CP5']] + data[names_dict['CP1']]) / 4
+            for trial in range(data.shape[0]):
+                # C3
+                data[trial,names_dict['C3']] -= (data[trial,names_dict['FC5']] + data[trial,names_dict['FC1']] +
+                                      data[trial,names_dict['CP5']] + data[trial,names_dict['CP1']]) / 4
 
-            # C4
-            data[names_dict['C4']] -= (data[names_dict['FC2']] + data[names_dict['FC6']] +
-                                  data[names_dict['CP2']] + data[names_dict['CP6']]) / 4
-            data = np.delete(data, [names_dict['CP5'], names_dict['FC5'], names_dict['FC1'],
-                                      names_dict['CP1'], names_dict['FC2'], names_dict['FC6'], names_dict['CP2'],
-                                      names_dict['CP6']], axis=0)
+                # C4
+                data[trial,names_dict['C4']] -= (data[trial,names_dict['FC2']] + data[trial,names_dict['FC6']] +
+                                      data[trial,names_dict['CP2']] + data[trial,names_dict['CP6']]) / 4
+            # data = np.delete(data, [names_dict['CP5'], names_dict['FC5'], names_dict['FC1'],
+            #                           names_dict['CP1'], names_dict['FC2'], names_dict['FC6'], names_dict['CP2'],
+            #                           names_dict['CP6']], axis=1)
         return data, channel_removed
