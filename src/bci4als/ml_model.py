@@ -6,6 +6,8 @@ from typing import List
 import mne
 import numpy
 import pandas as pd
+from mne.preprocessing import ICA
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 from sklearn.linear_model import LogisticRegression
 
@@ -13,7 +15,7 @@ from bci4als.eeg import EEG
 import numpy as np
 from matplotlib.figure import Figure
 from mne.channels import make_standard_montage
-from mne.decoding import CSP
+from mne.decoding import CSP, UnsupervisedSpatialFilter
 from nptyping import NDArray
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
@@ -49,6 +51,9 @@ class MLModel:
         self.raw_trials = None
         self.select_features = None
         self.scaler = StandardScaler()
+        self.ica = ICA(n_components=11, max_iter='auto', random_state=97)
+        self.csp_space = None
+
 
     def offline_training(self, model_type: str = 'csp_lda'):
 
@@ -78,7 +83,11 @@ class MLModel:
 
         # Apply band-pass filter
         epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+        #Save epochs
         self.epochs = epochs
+        # Prepare ICA
+        self.ica.fit(epochs)
+        self.ica.detect_artifacts(epochs)
 
     def _simple_svm(self):
         """
@@ -87,26 +96,32 @@ class MLModel:
         # pick classifier
         self.clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
         # Extract spectral features
-        data = copy.deepcopy(self.epochs.get_data())
+        data = copy.deepcopy(self.epochs)
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = self.epochs.info['sfreq']
+        #Apply ICA
+        data = self.ica.apply(data).get_data()
         # Get features
         bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-        hjorth_complexity = self.hjorthMobility(data)
-        LZC_features = self.LZC(data)
-        DFA_features = self.DFA(data)
+        # hjorth_complexity = self.hjorthMobility(data)
+        # LZC_features = self.LZC(data)
+        # DFA_features = self.DFA(data)
 
         # Get CSP features
         csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
-        csp_features = csp.fit_transform(data, self.labels)
+        self.csp_space = Pipeline(
+            [('asd', UnsupervisedSpatialFilter(PCA(11), average=True)), ('asdd', csp)]).fit(data, self.labels)
 
-        self.features_mat = np.concatenate((csp_features, bandpower_features_rel, bandpower_features, hjorth_complexity,
-                                            LZC_features, DFA_features), axis=1)
+        csp_features = self.csp_space.transform(data)
+
+        self.features_mat = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=1)
         # Normalize
         self.scaler.fit(self.features_mat)
         self.scaler.transform(self.features_mat)
+        print(self.features_mat.shape)
+        print(self.labels.__len__())
         # trial rejection
         self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
         # Prepare Pipeline
@@ -115,16 +130,18 @@ class MLModel:
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', self.clf)])
 
         # Initiate Pipeline for online classification
+        print(self.features_mat.shape)
+        print(self.labels.shape)
         self.clf = pipeline_SVM.fit(self.features_mat, self.labels)
 
     @staticmethod
     def trials_rejection(feature_mat, labels):
         to_remove = []
-        nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
-        add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
-        to_remove += add_remove
+        # nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
+        # add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
+        # to_remove += add_remove
 
-        func = lambda x: np.std(x,axis=1) > 2  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.std(np.abs(x),axis=1) > 1.5  # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -132,38 +149,24 @@ class MLModel:
         labels = np.delete(labels, to_remove, axis=0)
         return feature_mat, labels
 
-
-    def _csp_lda(self):
-        print('Training CSP & LDA model')
-
-        # Assemble a classifier
-        lda = LinearDiscriminantAnalysis()
-        csp = CSP(n_components=6, reg=None, log=True, norm_trace=False)
-
-        # Use scikit-learn Pipeline
-        self.clf = Pipeline([('CSP', csp), ('LDA', lda)])
-
-        # fit transformer and classifier to data
-        self.clf.fit(self.epochs.get_data(), self.labels)
-
     def online_predict(self, data: NDArray, eeg: EEG):
         # Prepare the data to MNE functions
         data = data.astype(np.float64)
-        # maybe make feature extraction static and avoid replicating this shit
+        # Prepare parameters
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = eeg.sfreq
+        #Apply ICA
+        self.ica.apply(data)
+        # Get features
+        csp_features = self.csp_space.transform(data)
         bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=True)
-        # hjorth_complexity = self.hjorthMobility(data[np.newaxis])
         # combine features
-        features_mat_test = np.concatenate((bandpower_features_rel, bandpower_features), axis=0)
+        features_mat_test = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=0)
         # Normalize
         features_mat_test = self.scaler.transform(features_mat_test[numpy.newaxis])
         # Trials rejection
-        # features_mat_test = self.trials_rejection(features_mat_test)
-        if self.clf is None:
-            self.clf = RandomForestClassifier(random_state=0)  # maybe make more dynamic to user
-            self.clf.fit(self.features_mat, self.labels)  # create new model (not necessary in new recordings)
+        features_mat_test = self.trials_rejection(features_mat_test)
         # select features on test set
         features_mat_test = self.select_features.transform(features_mat_test)
         # Predict

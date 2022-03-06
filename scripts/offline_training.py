@@ -15,8 +15,8 @@ def offline_experiment():
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E']] + [
                 ''.join(f"x{i}131000X") for i in ['R', 'T', 'Y', 'U', 'I']])
 
-    eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
-    exp = OfflineExperiment(eeg=eeg, num_trials=90, trial_length=5, full_screen=True, audio=False)
+    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
+    exp = OfflineExperiment(eeg=eeg, num_trials=15, trial_length=3, full_screen=True, audio=False)
     channel_removed = []
     trials, labels = exp.run()
     session_directory = exp.session_directory
@@ -31,7 +31,8 @@ def offline_experiment():
     pickle.dump(unfiltered_model, open(os.path.join(session_directory, 'unfiltered_model.pickle'), 'wb'))
 
     # do Laplacian filter
-    trials, to_remove = eeg.laplacian(trials)
+    to_remove = []
+    # trials, to_remove = eeg.laplacian(trials)
     # Delete repetitive elements in the list
     #channel_removed = list(set(channel_removed + to_removed))
     channel_removed = to_remove
