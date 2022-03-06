@@ -305,7 +305,7 @@ def ndarray_to_raw(data, ch_names):
     raw = mne.io.RawArray(comb_data, info)
     return raw
 
-data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\3\unfiltered_model.pickle')
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\noam\9\unfiltered_model.pickle')
 data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
 raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
 #
