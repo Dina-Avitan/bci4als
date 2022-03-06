@@ -72,6 +72,7 @@ class MLModel:
         [ch_names.remove(bad_ch) for bad_ch in self.channel_removed if bad_ch in ch_names]
         ch_types = ['eeg'] * len(ch_names)
         sfreq: int = eeg.sfreq
+        print(eeg.sfreq)
         n_samples: int = min([t.shape[1] for t in self.trials])
         epochs_array: np.ndarray = np.stack([t[:, :n_samples] for t in self.trials])
         info = mne.create_info(ch_names, sfreq, ch_types)
@@ -93,9 +94,6 @@ class MLModel:
         """
         This function will re-learn the model's feature mat and clf object which represents the model itself
         """
-        # pick classifier
-        clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-        rf_classifier = RandomForestClassifier(random_state=0)
 
         # Extract spectral features
         data = copy.deepcopy(self.epochs)
@@ -103,6 +101,7 @@ class MLModel:
         fs = self.epochs.info['sfreq']
         #Apply ICA
         data = self.ica.apply(data).get_data()
+        print(self.ica.exclude)
         # Get features
         bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, bands, fs, window_sec=0.5, relative=True)
@@ -121,6 +120,9 @@ class MLModel:
         self.scaler.transform(self.features_mat)
         # trial rejection
         self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
+        # pick classifier
+        clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
+        rf_classifier = RandomForestClassifier(random_state=0)
         # Prepare Pipeline
         mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(self.features_mat.shape[0])))
         model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
@@ -129,13 +131,9 @@ class MLModel:
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
         pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
         print(model.fit_transform(self.features_mat, self.labels).shape)
-
+        print(self.features_mat.shape)
         # Initiate Pipeline for online classification
-        try:
-            self.clf = pipeline_RF.fit(self.features_mat, self.labels)
-        except ValueError:
-            pipeline_RF = Pipeline([('lasso', model), ('classify', rf_classifier)])
-            self.clf = pipeline_RF.fit(self.features_mat, self.labels)
+        self.clf = pipeline_RF.fit(self.features_mat, self.labels)
 
     @staticmethod
     def trials_rejection(feature_mat, labels):
@@ -144,7 +142,7 @@ class MLModel:
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=1) > 1.5  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=0) > 1.8  # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
