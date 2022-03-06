@@ -133,13 +133,13 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/noam/13/raw_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/41/trained_model.pickle')
     #
     labels = data2.labels
 
     # Choose clean data or not
-    data = data2.epochs.get_data()
-    # data = ICA_perform(data2).get_data()  # ICA
+    # data = data2.epochs.get_data()
+    data = ICA_perform(data2).get_data()  # ICA
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
@@ -166,7 +166,6 @@ def load_eeg():
 
     # Trial rejection
     bandpower_features_wtf, labels = trials_rejection(bandpower_features_wtf, labels)
-
     # seperate the data before feature selection
     indices = np.arange(bandpower_features_wtf.shape[0])
     X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(bandpower_features_wtf, labels,indices, random_state=0)

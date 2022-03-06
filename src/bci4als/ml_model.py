@@ -101,7 +101,8 @@ class MLModel:
         fs = self.epochs.info['sfreq']
         #Apply ICA
         data = self.ica.apply(data).get_data()
-        print(self.ica.exclude)
+        # Laplacian
+        data, _ = EEG.laplacian(data)
         # Get features
         bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, bands, fs, window_sec=0.5, relative=True)
@@ -117,7 +118,7 @@ class MLModel:
         self.features_mat = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=1)
         # Normalize
         self.scaler.fit(self.features_mat)
-        self.scaler.transform(self.features_mat)
+        self.features_mat = self.scaler.transform(self.features_mat)
         # trial rejection
         self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
         # pick classifier
@@ -130,8 +131,6 @@ class MLModel:
         # Select pipeline
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
         pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
-        print(model.fit_transform(self.features_mat, self.labels).shape)
-        print(self.features_mat.shape)
         # Initiate Pipeline for online classification
         self.clf = pipeline_RF.fit(self.features_mat, self.labels)
 
@@ -151,8 +150,6 @@ class MLModel:
         return feature_mat, labels
 
     def online_predict(self, data: NDArray, eeg: EEG):
-        # Prepare the data to MNE functions
-        data = data.astype(np.float64)
         # Prepare parameters
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = eeg.sfreq
@@ -171,10 +168,12 @@ class MLModel:
     def partial_fit(self, X, y, epochs, sfreq):
         # Append X to trials
         [self.trials.append(trial) for trial in X]
-
         # Append y to labels
-        [self.labels.append(label) for label in y]
-
+        print(y)
+        print(self.labels)
+        print(type(y))
+        for label in y:
+            self.labels = np.append(self.labels, label)
         # update self.epochs
         ch_types = ['eeg'] * len(epochs.ch_names)
         info = mne.create_info(epochs.ch_names, sfreq, ch_types)

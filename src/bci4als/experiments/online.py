@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import pickle
@@ -98,10 +99,7 @@ class OnlineExperiment(Experiment):
             time.sleep(max(0, self.buffer_time - timer.getTime()))
 
             # Get data and channes from EEG
-            data = self.eeg.get_channels_data()
-
-            # LaPlacian filter
-            # data, channels_removed = self.eeg.laplacian(data)
+            data = copy.deepcopy(self.eeg.get_channels_data())
 
             # get data into epochs and filter it
             ch_names = self.eeg.get_board_names()
@@ -115,6 +113,8 @@ class OnlineExperiment(Experiment):
             epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
             # Apply ICA
             epochs = self.model.ica.apply(epochs)
+            # LaPlacian filter
+            data, _ = self.eeg.laplacian(epochs.get_data())
             # Predict the class
             if self.debug:
                 # in debug mode, be correct 2/3 of the time and incorrect 1/3 of the time.
@@ -163,73 +163,6 @@ class OnlineExperiment(Experiment):
 
         # Save Results
         json.dump(self.results, open(os.path.join(self.session_directory, 'results.json'), "w"))
-
-    def online_pipe(self, data: NDArray) -> NDArray:
-        """
-        The method get the data as ndarray with dimensions of (n_channels, n_samples).
-        The method returns the features for the given data.
-        :param data: ndarray with the shape (n_channels, n_samples)
-        :return: ndarray with the shape of (1, n_features)
-        """
-        # Prepare the data to MNE functions
-        data = data.astype(np.float64)
-
-        # Filter the data (band-pass only)
-        data = mne.filter.filter_data(data, l_freq=8, h_freq=30, sfreq=self.eeg.sfreq, verbose=False)
-
-        # Laplacian  < cannot work like this...
-        # data = self.eeg.laplacian(data, self.eeg.get_board_names())
-
-        # Normalize
-        scaler = StandardScaler()
-        data = scaler.fit_transform(data.T).T
-
-        # Extract features
-        funcs_params = {'pow_freq_bands__freq_bands': np.array([8, 10, 12.5, 30])}
-        selected_funcs = ['pow_freq_bands', 'variance']
-        X = extract_features(data[np.newaxis], self.eeg.sfreq, selected_funcs, funcs_params)[0]
-
-        return X
-
-    def online_pipe_new(self, data: NDArray) -> NDArray:
-        """
-        The method get the data as ndarray with dimensions of (n_channels, n_samples).
-        The method returns the features for the given data.
-        :param data: ndarray with the shape (n_channels, n_samples)
-        :return: ndarray with the shape of (1, n_features)
-        """
-        # Prepare the data to MNE functions
-        data = data.astype(np.float64)
-
-        # Filter the data (band-pass only)
-        data = mne.filter.filter_data(data, l_freq=8, h_freq=30, sfreq=self.eeg.sfreq, verbose=False)
-        trials = []
-        data = self.eeg.get_board_data()
-        ch_names = self.eeg.get_board_names()
-        ch_channels = self.eeg.get_board_channels()
-        durations, labels = self.eeg.extract_trials(data)
-
-        # Assert the labels
-        assert self.labels == labels, 'The labels are not equals to the extracted labels'
-
-        # Append each
-        for start, end in durations:
-            trial = data[ch_channels, start:end]
-            trials.append(pd.DataFrame(data=trial.T, columns=ch_names))
-
-        # Laplacian  < cannot work like this...
-        # data = self.eeg.laplacian(data, self.eeg.get_board_names())
-
-        # Normalize
-        scaler = StandardScaler()
-        data = scaler.fit_transform(data.T).T
-
-        # Extract features
-        funcs_params = {'pow_freq_bands__freq_bands': np.array([8, 10, 12.5, 30])}
-        selected_funcs = ['pow_freq_bands', 'variance']
-        X = extract_features(data[np.newaxis], self.eeg.sfreq, selected_funcs, funcs_params)[0]
-
-        return X
 
     def run(self, use_eeg: bool = True, full_screen: bool = False):
 

@@ -18,7 +18,7 @@ def run_experiment(model_path: str):
     CYTON_DAISY = 2
 
     # select buffer time
-    buffer_time = 5
+    buffer_time = 3
     # if model.epochs.get_data()[0].shape[1]//125 != buffer_time:
     #     raise IndexError(f"Model buffer time must match online buffer time. change buffer time to"
     #                      f" {model.epochs.get_data()[0]//125} or change model")
@@ -29,7 +29,7 @@ def run_experiment(model_path: str):
                 ''.join(f"x{i}131000X") for i in ['T', 'Y', 'U', 'I']])
     eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
 
-    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=10, buffer_time=buffer_time, threshold=3, skip_after=3,
+    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=10, buffer_time=buffer_time, threshold=3, skip_after=6,
                            co_learning=True, debug=False)
 
     exp.run(use_eeg=True, full_screen=True)
@@ -37,7 +37,7 @@ def run_experiment(model_path: str):
 
 if __name__ == '__main__':
 
-    model_path = r'../recordings/noam/13/unfiltered_model.pickle'
+    model_path = r'../recordings/roy/40/trained_model.pickle'
     # model_path = None  # use if synthetic
     run_experiment(model_path=model_path)
 

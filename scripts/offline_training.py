@@ -16,15 +16,15 @@ def offline_experiment():
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E']] + [
                 ''.join(f"x{i}131000X") for i in ['R', 'T', 'Y', 'U', 'I']])
 
-    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
-    exp = OfflineExperiment(eeg=eeg, num_trials=15, trial_length=3, full_screen=True, audio=True)
+    eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
+    exp = OfflineExperiment(eeg=eeg, num_trials=30, trial_length=3, full_screen=True, audio=True)
     channel_removed = []
     trials, labels = exp.run()
     session_directory = exp.session_directory
-    # remove outliers
-    for i in range(len(trials)):
-        std_col = trials[i].std(axis=0)
-        channel_removed += std_col[std_col == 0].index.tolist()  # add outliers (bad electrodes) to remove
+    # # remove outliers
+    # for i in range(len(trials)):
+    #     std_col = trials[i].std(axis=0)
+    #     channel_removed += std_col[std_col == 0].index.tolist()  # add outliers (bad electrodes) to remove
 
     # get and save raw unfiltered data
     unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])
@@ -32,23 +32,23 @@ def offline_experiment():
     pickle.dump(unfiltered_model, open(os.path.join(session_directory, 'pre_laplacian.pickle'), 'wb'))
 
     # do Laplacian filter
-    to_remove = []
+    # to_remove = []
     # trials, to_remove = eeg.laplacian(trials)
     # Delete repetitive elements in the list
     #channel_removed = list(set(channel_removed + to_removed))
-    channel_removed = to_remove
+    # channel_removed = to_remove
 
     # Get model ready for classification
-    model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
+    # model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)
 
     # save epochs
-    model.epochs_extractor(copy.deepcopy(eeg))
-    pickle.dump(model, open(os.path.join(session_directory, 'after_laplacian.pickle'), 'wb'))
+    # model.epochs_extractor(copy.deepcopy(eeg))
+    # pickle.dump(model, open(os.path.join(session_directory, 'after_laplacian.pickle'), 'wb'))
 
-    # train model and classify
-    model.offline_training(model_type='simple_svm')
-    # Dump the MLModel
-    pickle.dump(model, open(os.path.join(session_directory, 'trained_model.pickle'), 'wb'))
+    # # train model and classify
+    # model.offline_training(model_type='simple_svm')
+    # # Dump the MLModel
+    # pickle.dump(model, open(os.path.join(session_directory, 'trained_model.pickle'), 'wb'))
 
     print('Finish!!')
 
