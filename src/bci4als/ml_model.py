@@ -118,7 +118,7 @@ class MLModel:
         self.scaler.fit(self.features_mat)
         self.scaler.transform(self.features_mat)
         # trial rejection
-        # self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
+        self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
         # Prepare Pipeline
         model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
         seq_select_clf = SequentialFeatureSelector(self.clf, n_features_to_select=int(math.sqrt(data.shape[0])), n_jobs=1)
