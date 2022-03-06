@@ -81,8 +81,8 @@ def load_eeg():
         epochs = model.epochs
         ica = ICA(n_components=11, max_iter='auto', random_state=97)
         ica.fit(epochs)
-        # ica.exclude = [0,1,4]
-        ica.detect_artifacts(epochs)
+        ica.exclude = [0,1]
+        # ica.detect_artifacts(epochs)
         ica.apply(epochs)
         return epochs
     def trials_rejection(feature_mat, labels):
@@ -114,7 +114,7 @@ def load_eeg():
     # labels = np.ravel(trainingVec['trainingVec'].T)
     #  # data should be trails X electrodes X samples.
     # data = np.transpose(data, (2, 0, 1))
-    #
+
     # final_data = []
     #
     # for trial in range(data.shape[0]):
@@ -143,7 +143,7 @@ def load_eeg():
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    data, _ = EEG.laplacian(data)
+    # data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
