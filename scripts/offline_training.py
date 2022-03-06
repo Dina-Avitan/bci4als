@@ -49,10 +49,7 @@ def offline_experiment():
     # Dump the MLModel
     pickle.dump(model, open(os.path.join(session_directory, 'trained_model.pickle'), 'wb'))
 
-    # cross-validation
-    scores = model.cross_val()
-    (print(f"Prediction rate is: {np.mean(scores[0])*100}%"))
-    #harta
+    print('Finish!!')
 
 if __name__ == '__main__':
 

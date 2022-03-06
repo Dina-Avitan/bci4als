@@ -104,9 +104,6 @@ class MLModel:
         # Get features
         bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-        # hjorth_complexity = self.hjorthMobility(data)
-        # LZC_features = self.LZC(data)
-        # DFA_features = self.DFA(data)
 
         # Get CSP features
         csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
@@ -120,28 +117,24 @@ class MLModel:
         # Normalize
         self.scaler.fit(self.features_mat)
         self.scaler.transform(self.features_mat)
-        print(self.features_mat.shape)
-        print(self.labels.__len__())
         # trial rejection
-        self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
+        # self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
         # Prepare Pipeline
         model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
         seq_select_clf = SequentialFeatureSelector(self.clf, n_features_to_select=int(math.sqrt(data.shape[0])), n_jobs=1)
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', self.clf)])
 
         # Initiate Pipeline for online classification
-        print(self.features_mat.shape)
-        print(self.labels.shape)
         self.clf = pipeline_SVM.fit(self.features_mat, self.labels)
 
     @staticmethod
     def trials_rejection(feature_mat, labels):
         to_remove = []
-        # nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
-        # add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
-        # to_remove += add_remove
+        nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
+        add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
+        to_remove += add_remove
 
-        func = lambda x: np.std(np.abs(x),axis=1) > 1.5  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1.5  # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -155,36 +148,19 @@ class MLModel:
         # Prepare parameters
         bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
         fs = eeg.sfreq
-        #Apply ICA
-        self.ica.apply(data)
         # Get features
-        csp_features = self.csp_space.transform(data)
+        csp_features = self.csp_space.transform(data[np.newaxis])[0]
         bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=True)
         # combine features
         features_mat_test = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=0)
         # Normalize
         features_mat_test = self.scaler.transform(features_mat_test[numpy.newaxis])
-        # Trials rejection
-        features_mat_test = self.trials_rejection(features_mat_test)
-        # select features on test set
-        features_mat_test = self.select_features.transform(features_mat_test)
         # Predict
         prediction = self.clf.predict(features_mat_test)
         return prediction, features_mat_test
 
-    def cross_val(self):
-        max_score = 1
-        for feat_num in range(1, int(math.sqrt(self.features_mat.shape[0]))):
-            features_mat_selected = SelectKBest(mutual_info_classif, k=feat_num).fit_transform(self.features_mat, self.labels)
-            scores_mix = cross_val_score(self.clf, features_mat_selected, self.labels, cv=5)
-            if np.mean(scores_mix) * 100 > max_score:
-                max_score = np.mean(scores_mix) * 100
-                feat_num_max = feat_num
-        return max_score, feat_num_max
-
-    def partial_fit(self, X, y, epochs,sfreq):
-
+    def partial_fit(self, X, y, epochs, sfreq):
         # Append X to trials
         [self.trials.append(trial) for trial in X]
 
@@ -195,17 +171,13 @@ class MLModel:
         ch_types = ['eeg'] * len(epochs.ch_names)
         info = mne.create_info(epochs.ch_names, sfreq, ch_types)
         temp_epoch = copy.deepcopy(self.epochs.get_data())
-        print(temp_epoch.shape)
-        print(X[0].shape)
         for trial in X:
             temp_epoch = np.concatenate((temp_epoch, trial[np.newaxis]))
         self.epochs = mne.EpochsArray(temp_epoch, info)
-        print(temp_epoch.shape)
-        print(self.epochs.get_data().shape)
         del temp_epoch
-
         # update feature mat and fit model
         self._simple_svm()
+
     @staticmethod
     def bandpower(data, bands, sf, window_sec=None, relative=False):
         """Compute the average power of the signal x in a specific frequency band.

@@ -113,7 +113,8 @@ class OnlineExperiment(Experiment):
             epochs_array: np.ndarray = (np.stack([t[:self.model.epochs.get_data()[0].shape[1]] for t in data]))[np.newaxis]  # make the elecs same size
             epochs = mne.EpochsArray(epochs_array, info)
             epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
-
+            # Apply ICA
+            epochs = self.model.ica.apply(epochs)
             # Predict the class
             if self.debug:
                 # in debug mode, be correct 2/3 of the time and incorrect 1/3 of the time.
