@@ -81,8 +81,8 @@ def load_eeg():
         epochs = model.epochs
         ica = ICA(n_components=11, max_iter='auto', random_state=97)
         ica.fit(epochs)
-        ica.exclude = [0,1]
-        # ica.detect_artifacts(epochs)
+        # ica.exclude = [0,1]
+        ica.detect_artifacts(epochs)
         ica.apply(epochs)
         return epochs
     def trials_rejection(feature_mat, labels):
@@ -133,7 +133,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/20/trained_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/22/unfiltered_model.pickle')
     #
     labels = data2.labels
 
@@ -143,7 +143,7 @@ def load_eeg():
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    # data, _ = EEG.laplacian(data)
+    data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
@@ -197,7 +197,7 @@ def load_eeg():
     scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    print(scores_mix)
+    print(scores_mix2)
 
     #print scores
     (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
@@ -209,27 +209,29 @@ def load_eeg():
     # fit pipelines for the confusion matrix and get matrices
     pipeline_SVM.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind], normalize='true')
+                                          np.array(labels)[test_ind])
     plt.show()
 
     pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    print(pipeline_RF.predict(bandpower_features_wtf[test_ind, :]))
+    print(np.sum(pipeline_RF.predict(bandpower_features_wtf[test_ind, :])==np.array(labels)[test_ind]))
     ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind], normalize='true')
+                                          np.array(labels)[test_ind])
     plt.show()
 
     pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind], normalize='true')
+                                          np.array(labels)[test_ind])
     plt.show()
 
     pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind], normalize='true')
+                                          np.array(labels)[test_ind])
     plt.show()
 
     pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind], normalize='true')
+                                          np.array(labels)[test_ind])
     plt.show()
 
 

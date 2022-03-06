@@ -58,7 +58,7 @@ class OnlineExperiment(Experiment):
         self.co_learning: bool = co_learning
 
         # audio
-        self.audio_success_path = os.path.join(r'../src/bci4als/', 'audio', f'success.mp3')  # hope its generic
+        self.audio_success_path = os.path.join(r'../src/bci4als/experiments', 'audio', f'success.mp3')  # hope its generic
 
         # Model configs
         self.labels_enum: Dict[str, int] = {'right': 0, 'left': 1, 'idle': 2}  # , 'tongue': 3, 'legs': 4}

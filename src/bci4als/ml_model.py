@@ -128,6 +128,7 @@ class MLModel:
         # Select pipeline
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
         pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
+        print(model.fit_transform(self.features_mat, self.labels).shape)
 
         # Initiate Pipeline for online classification
         try:
