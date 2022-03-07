@@ -139,7 +139,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/48/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/50/pre_laplacian.pickle')
     #
     labels = data2.labels
 
@@ -149,7 +149,7 @@ def load_eeg():
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    data, _ = EEG.laplacian(data)
+    # data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
@@ -158,7 +158,7 @@ def load_eeg():
 
     # # Get CSP features
     csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=False)),('asdd',csp)]).fit_transform(data, labels)
+    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(11), average=True)),('asdd',csp)]).fit_transform(data, labels)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)

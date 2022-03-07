@@ -110,7 +110,7 @@ class OnlineExperiment(Experiment):
             n_samples: int = min([t.shape[0] for t in data])  # get the minimum length of each elec
             epochs_array: np.ndarray = (np.stack([t[:self.model.epochs.get_data()[0].shape[1]] for t in data]))[np.newaxis]  # make the elecs same size
             epochs = mne.EpochsArray(epochs_array, info)
-            epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+            epochs.filter(40., 1., fir_design='firwin', skip_by_annotation='edge', verbose=False)
             # Apply ICA
             epochs = self.model.ica.apply(epochs)
             # LaPlacian filter
