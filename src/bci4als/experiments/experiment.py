@@ -83,7 +83,7 @@ class Experiment:
         return subject_folder
 
     @staticmethod
-    def _wait_between_trials(feedback: Feedback, eeg: EEG, use_eeg: bool):
+    def _wait_between_trials(feedback: Feedback, eeg: EEG, use_eeg: bool,next_stim,audio_next_pathes, stim_sound):
         """
         Method for waiting between trials.
 
@@ -93,7 +93,7 @@ class Experiment:
         """
 
         # Show empty feedback
-        feedback.display(0)
+        feedback.display(0,next_stim=next_stim,audio_next_pathes=audio_next_pathes,stim_sound=stim_sound)
 
         # Wait for key-press
         event.waitKeys()

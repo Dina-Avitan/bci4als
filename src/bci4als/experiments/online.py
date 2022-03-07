@@ -44,7 +44,7 @@ class OnlineExperiment(Experiment):
 
     def __init__(self, eeg: EEG, model: MLModel, num_trials: int,
                  buffer_time: float, threshold: int, co_learning: bool,skip_after: Union[bool, int] = False,
-                 debug=False, mode='practice'):
+                 debug=False, mode='practice',stim_sound = False):
 
         super().__init__(eeg, num_trials)
         # experiment params
@@ -60,13 +60,19 @@ class OnlineExperiment(Experiment):
 
         # audio
         self.audio_success_path = os.path.join(r'../src/bci4als/experiments', 'audio', f'success.mp3')  # hope its generic
-
+        self.audio_next_pathes = [os.path.join(r'../src/bci4als/experiments', 'audio', f'next_right.mp3'),
+                                  os.path.join(r'../src/bci4als/experiments', 'audio', f'next_left.mp3'),
+                                  os.path.join(r'../src/bci4als/experiments', 'audio', f'next_idle.mp3')]
+        self.audio_first_stim_pathes = [os.path.join(r'../src/bci4als/experiments', 'audio', f'right.mp3'),
+                                        os.path.join(r'../src/bci4als/experiments', 'audio', f'left.mp3'),
+                                        os.path.join(r'../src/bci4als/experiments', 'audio', f'idle.mp3')]
         # Model configs
         self.labels_enum: Dict[str, int] = {'right': 0, 'left': 1, 'idle': 2}  # , 'tongue': 3, 'legs': 4}
         self.label_dict: Dict[int, str] = dict([(value, key) for key, value in self.labels_enum.items()])
         self.num_labels: int = len(self.labels_enum)
         self.batch_stack = [[],[],[]]  # number of classes is number of empty lists
         self.mode = mode
+        self.stim_sound = stim_sound
 
         # Hold list of lists of target-prediction pairs per trial
         # Example: [ [(0, 2), (0,3), (0,0), (0,0), (0,0) ] , [ ...] , ... ,[] ]
@@ -189,7 +195,7 @@ class OnlineExperiment(Experiment):
             self.eeg.on()
 
         # For each stim in the trials list
-        for stim in self.labels:
+        for ind_stim, stim in enumerate(self.labels):
 
             # Init feedback instance
             feedback = Feedback(self.win, stim, self.buffer_time, self.threshold)
@@ -201,10 +207,13 @@ class OnlineExperiment(Experiment):
             # Maintain visual feedback on screen
             timer = core.Clock()
 
+            num_first_stim = -1
             while not feedback.stop:
-
+                num_first_stim +=1
                 feedback.display(current_time=timer.getTime())
-
+                if ind_stim == 0 and num_first_stim == 0:
+                    if self.stim_sound:
+                        playsound.playsound(self.audio_first_stim_pathes[self.labels[ind_stim]])
                 # Reset the timer according the buffer time attribute
                 if timer.getTime() > self.buffer_time:
                     timer.reset()
@@ -214,7 +223,8 @@ class OnlineExperiment(Experiment):
                     sys.exit(-1)
 
             # Waiting for key-press between trials
-            self._wait_between_trials(feedback, self.eeg, use_eeg)
+            next_stim = self.labels[ind_stim+1] if ind_stim < len(self.labels)-1 else 'end'
+            self._wait_between_trials(feedback, self.eeg, use_eeg,next_stim,self.audio_next_pathes,stim_sound=self.stim_sound)
 
         # turn off EEG streaming
         if use_eeg:
