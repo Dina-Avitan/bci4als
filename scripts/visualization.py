@@ -152,7 +152,7 @@ def plot_spectrogram(spec_dict,elec):
     plt.setp(axs[-1, :], xlabel='Time [sec]')
     plt.setp(axs[:, 0], ylabel='Frequency [Hz]')
     plt.colorbar(im, ax=axs.ravel().tolist())
-    #plt.show()
+    plt.show()
 
 def ICA_noam(unfiltered_model):
     # ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
@@ -230,6 +230,25 @@ def epochs_z_score(epochs):
         data[i]= array.transpose()
     return data
 
+def laplacian(model):
+    perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
+    data = model.epochs.get_data()
+    for trial in range(data.shape[0]):
+        # C3
+        data[trial][perm_c3[0]] -= (data[trial][perm_c3[1]] + data[trial][perm_c3[2]] + data[trial][perm_c3[3]] +
+                              data[trial][perm_c3[4]]) / 2
+        # C4
+        data[trial][perm_c3[5]] -= (data[trial][perm_c3[6]] + data[trial][perm_c3[7]] + data[trial][perm_c3[8]] +
+                              data[trial][perm_c3[9]]) / 2
+        new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
+        # new_data = data[trial]
+        if trial == 0:
+            final_data = new_data[np.newaxis]
+        else:
+            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    data = final_data
+    return data
+
 def get_feature_mat(model):
     # define parameters
     fs = 125
@@ -305,7 +324,7 @@ def ndarray_to_raw(data, ch_names):
     raw = mne.io.RawArray(comb_data, info)
     return raw
 
-data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\noam\17\unfiltered_model.pickle')
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\noam\19\pre_laplacian.pickle')
 data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
 raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
 #
