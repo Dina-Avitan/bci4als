@@ -29,7 +29,7 @@ def run_experiment(model_path: str):
                 ''.join(f"x{i}131000X") for i in ['T', 'Y', 'U', 'I']])
     eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
 
-    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=10, buffer_time=buffer_time, threshold=3, skip_after=6,
+    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=9, buffer_time=buffer_time, threshold=3, skip_after=2,
                            co_learning=True, debug=False)
 
     exp.run(use_eeg=True, full_screen=True)
@@ -37,7 +37,7 @@ def run_experiment(model_path: str):
 
 if __name__ == '__main__':
 
-    model_path = r'../recordings/roy/50/pre_laplacian.pickle'
+    model_path = r'../recordings/roy/62/trained_model.pickle'
     # model_path = None  # use if synthetic
     run_experiment(model_path=model_path)
 

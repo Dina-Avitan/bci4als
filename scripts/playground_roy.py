@@ -29,7 +29,7 @@ from sklearn.tree import DecisionTreeClassifier
 from mne.decoding import UnsupervisedSpatialFilter
 from bci4als import ml_model, EEG
 from sklearn import svm
-from sklearn.model_selection import cross_val_score,  train_test_split
+from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -109,9 +109,6 @@ def load_eeg():
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # bands = np.matrix('1 4; 7 12; 12 15; 17 22; 1 40; 25 40')
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
-    # clf = LinearDiscriminantAnalysis(solver='lsqr',shrinkage='auto', tol=1e-6)
-    # clf = LinearDiscriminantAnalysis(tol=1e-8)
-    # clf = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=50, random_state=0, max_iter=400)
 
     # # Ofir's data
     # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
@@ -139,13 +136,14 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/50/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/63/trained_model.pickle')
     #
     labels = data2.labels
 
     # Choose clean data or not
     # data = data2.epochs.get_data()
     data = ICA_perform(data2).get_data()  # ICA
+    print(data.shape)
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
@@ -174,7 +172,8 @@ def load_eeg():
     bandpower_features_wtf, labels = trials_rejection(bandpower_features_wtf, labels)
     # seperate the data before feature selection
     indices = np.arange(bandpower_features_wtf.shape[0])
-    X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(bandpower_features_wtf, labels,indices, random_state=0)
+    X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(bandpower_features_wtf,
+                                labels,indices, random_state=0)
 
     # Define selection algorithms
     rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
@@ -202,7 +201,7 @@ def load_eeg():
     scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    print(scores_mix2)
+    print(scores_mix3)
 
     #print scores
     (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))

@@ -109,12 +109,15 @@ class OnlineExperiment(Experiment):
             info = mne.create_info(ch_names, sfreq, ch_types)
             n_samples: int = min([t.shape[0] for t in data])  # get the minimum length of each elec
             epochs_array: np.ndarray = (np.stack([t[:self.model.epochs.get_data()[0].shape[1]] for t in data]))[np.newaxis]  # make the elecs same size
+            # Get epochs object for prediction and another one for adding it to the data
             epochs = mne.EpochsArray(epochs_array, info)
-            epochs.filter(40., 1., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+            epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+            # Make two epoch objects: one for prediction(will go ICA and laplace) and one for adding to data
+            epochs_pred = copy.deepcopy(epochs)
             # Apply ICA
-            epochs = self.model.ica.apply(epochs)
+            epochs_pred = self.model.ica.apply(epochs_pred)
             # LaPlacian filter
-            data, _ = self.eeg.laplacian(epochs.get_data())
+            data, _ = self.eeg.laplacian(epochs_pred.get_data())
             # Predict the class
             if self.debug:
                 # in debug mode, be correct 2/3 of the time and incorrect 1/3 of the time.
@@ -122,7 +125,7 @@ class OnlineExperiment(Experiment):
             else:
                 # in normal mode, use the loaded model to make a prediction
                 # squeeze is a plaster. you can later remove all the newaxis fom online predict
-                prediction, test_features = self.model.online_predict(np.squeeze(epochs.get_data()), eeg=self.eeg)
+                prediction, test_features = self.model.online_predict(np.squeeze(epochs_pred.get_data()), eeg=self.eeg)
                 prediction = int(prediction)
 
             # play sound if successful
@@ -132,7 +135,7 @@ class OnlineExperiment(Experiment):
                 if prediction == stim:
                     playsound.playsound(self.audio_success_path)
 
-            if self.co_learning and prediction == stim:  # maybe prediction doesnt have to be == stim
+            if self.co_learning:# and prediction == stim:  # maybe prediction doesnt have to be == stim
                 self.batch_stack[stim].append(np.squeeze(epochs.get_data()))
                 if all(self.batch_stack):
                     print('co-adaptive working')

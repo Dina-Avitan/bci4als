@@ -83,12 +83,12 @@ class MLModel:
         epochs.set_montage(montage)
 
         # Apply band-pass filter
-        # epochs.filter(40., 1., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+        epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
         #Save epochs
         self.epochs = epochs
         # Prepare ICA
-        # self.ica.fit(epochs)
-        # self.ica.detect_artifacts(epochs)
+        self.ica.fit(epochs)
+        self.ica.detect_artifacts(epochs)
 
     def _simple_svm(self):
         """
