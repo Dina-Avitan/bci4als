@@ -3,7 +3,7 @@ import time
 from collections import namedtuple
 from typing import Dict
 from psychopy import visual
-
+import playsound
 # name tuple object for the progress bar params
 Bar = namedtuple('Bar', ['pos', 'line_size', 'frame_size', 'frame_color', 'fill_color'])
 
@@ -108,7 +108,7 @@ class Feedback:
         if skip:
             self.stop = True
 
-    def display(self, current_time: float):
+    def display(self, current_time: float, next_stim = None,audio_next_pathes = None,stim_sound=False):
         """
         Display the current state of the progress bar aside to the current stim
         :param current_time: the current time for the time bar object
@@ -121,11 +121,20 @@ class Feedback:
 
         # If time to stop trial draw finished message
         if self.stop:
-            if self.confident:
-                text = 'Well done!\nPress any key to continue'
-            else:
-                text = 'Skipping.\nPress any key to continue'
-            visual.TextStim(self.win, text, pos=(0, 0.5)).draw()
+            if type(next_stim) == int or type(next_stim) == float:
+                if self.confident:
+                    text = 'Well done!\nPress any key to continue\nNext stimulus is ' + self.enum_image[next_stim]
+                else:
+                    text = 'Skipping.\nPress any key to continue\nNext stimulus is ' + self.enum_image[next_stim]
+                visual.TextStim(self.win, text, pos=(0, 0.5)).draw()
+                if stim_sound:
+                    playsound.playsound(audio_next_pathes[next_stim])
+            elif next_stim == 'end':
+                if self.confident: 
+                    text = 'Well done!\nPress any key to continue\nThe end!'
+                else:
+                    text = 'Skipping.\nPress any key to continue\nThe end!'
+                visual.TextStim(self.win, text, pos=(0, 0.5)).draw()
 
         # Display window & wait
         self.win.flip()
