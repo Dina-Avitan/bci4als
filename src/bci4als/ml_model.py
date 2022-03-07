@@ -111,7 +111,7 @@ class MLModel:
         csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
         self.csp_space = Pipeline(
-            [('asd', UnsupervisedSpatialFilter(PCA(11), average=True)), ('asdd', csp)]).fit(data, self.labels)
+            [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
 
         csp_features = self.csp_space.transform(data)
 
@@ -127,7 +127,7 @@ class MLModel:
         # Prepare Pipeline
         mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(self.features_mat.shape[0])))
         model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
-        seq_select_clf = SequentialFeatureSelector(clf, n_features_to_select=0.2, n_jobs=1)
+        seq_select_clf = SequentialFeatureSelector(clf, n_features_to_select=int(math.sqrt(self.features_mat.shape[0])), n_jobs=1)
         # Select pipeline
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
         pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
