@@ -149,7 +149,7 @@ def load_eeg():
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    # data, _ = EEG.laplacian(data)
+    data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
