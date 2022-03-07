@@ -112,7 +112,7 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
     plt.ylabel('PSD')#[V**2/Hz]?
     plt.show()
 
-def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125):
+def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125,scaling = 'spectrum'):
     sr = raw_model.epochs.info['sfreq']
     elec = (raw_model.epochs.ch_names[elec],elec)
     spec_dict ={}
@@ -120,7 +120,7 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
         if i_spec < 3:
             indices = [i for i in range(len(raw_model.labels)) if raw_model.labels[i] == i_spec]
             data = raw_model.epochs.get_data(item=indices)
-            f,t,Sxx = scipy.signal.spectrogram(data,  sr, window=str(nwindow), noverlap=noverlap, nperseg=nperseg,nfft=nfft)
+            f,t,Sxx = scipy.signal.spectrogram(data,  sr, window=str(nwindow), noverlap=noverlap, nperseg=nperseg,nfft=nfft,scaling=scaling)
             spec_dict[str(i_spec)] = np.ndarray.mean(Sxx, axis=0)
         else:
             indices_right = [i for i in range(len(raw_model.labels)) if raw_model.labels[i] == 0]
@@ -135,7 +135,7 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
         spec_dict['t'] = t
         spec_dict['f'] = f
     plot_spectrogram(spec_dict,elec)
-
+create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=25, nperseg=50,nfft = 125,scaling = 'density')
 def plot_spectrogram(spec_dict,elec):
     class_name = ['Right', 'Left', 'Idle','Right-Left diff']
     fig, axs = plt.subplots(2, 2, sharex=True, sharey=True)
