@@ -44,7 +44,7 @@ class OnlineExperiment(Experiment):
 
     def __init__(self, eeg: EEG, model: MLModel, num_trials: int,
                  buffer_time: float, threshold: int, co_learning: bool,skip_after: Union[bool, int] = False,
-                 debug=False):
+                 debug=False, mode='practice'):
 
         super().__init__(eeg, num_trials)
         # experiment params
@@ -66,7 +66,7 @@ class OnlineExperiment(Experiment):
         self.label_dict: Dict[int, str] = dict([(value, key) for key, value in self.labels_enum.items()])
         self.num_labels: int = len(self.labels_enum)
         self.batch_stack = [[],[],[]]  # number of classes is number of empty lists
-
+        self.mode = mode
 
         # Hold list of lists of target-prediction pairs per trial
         # Example: [ [(0, 2), (0,3), (0,0), (0,0), (0,0) ] , [ ...] , ... ,[] ]
@@ -147,15 +147,20 @@ class OnlineExperiment(Experiment):
             # Reset the clock for the next buffer
             timer.reset()
 
-            if stim == prediction:
-                num_tries = 0  # if successful, reset num_tries to 0
-                print(num_tries)
-            else:
-                num_tries += 1
+            # skip according to mode
+            if self.mode == 'practice':
+                if stim == prediction:
+                    num_tries = 0  # if successful, reset num_tries to 0
+                    print(num_tries)
+                else:
+                    num_tries += 1
+                # Update the feedback according the prediction
+                feedback.update(prediction, skip=(num_tries >= self.skip_after))
 
-            # Update the feedback according the prediction
-            feedback.update(prediction, skip=(num_tries >= self.skip_after))
-            # feedback.update(stim)  # For debugging purposes
+            if self.mode == 'test':
+                num_tries += 1
+                # Update the feedback according the prediction
+                feedback.update(None, skip=(num_tries >= self.skip_after))
 
             # Debug
             print(f'Predict: {self.label_dict[prediction]}; '

@@ -88,7 +88,7 @@ class Feedback:
                                                  size=(0, self.time_bar_frame.size[1]),
                                                  fillColor=self.time_bar.fill_color)
 
-    def update(self, predict_stim: int, skip: bool = False):
+    def update(self, predict_stim, skip: bool = False):
         """
         Update the feedback on screen.
         The update occur according to the model prediction. If the model was right
