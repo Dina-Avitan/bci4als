@@ -139,7 +139,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/22/unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/48/pre_laplacian.pickle')
     #
     labels = data2.labels
 
@@ -449,11 +449,11 @@ def plot_calssifiers(datasets):
 
 
 if __name__ == '__main__':
-    import pandas as pd
-    model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam/13/unfiltered_model.pickle')
-    model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/23/unfiltered_model.pickle')
-    model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
-    datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
+    # import pandas as pd
+    # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam/13/unfiltered_model.pickle')
+    # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/23/unfiltered_model.pickle')
+    # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
+    # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # playground()
-    # load_eeg()
-    plot_calssifiers(datasets)
+    load_eeg()
+    # plot_calssifiers(datasets)
