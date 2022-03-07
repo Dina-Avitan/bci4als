@@ -207,11 +207,11 @@ class OnlineExperiment(Experiment):
             # Maintain visual feedback on screen
             timer = core.Clock()
 
-            num_first_stim = -1
+            num_first_stim = -1 # for the first stim to be heard
             while not feedback.stop:
                 num_first_stim +=1
                 feedback.display(current_time=timer.getTime())
-                if ind_stim == 0 and num_first_stim == 0:
+                if ind_stim == 0 and num_first_stim == 0: # for the first stim to be heard ( the other appears in "feedback.display" func)
                     if self.stim_sound:
                         playsound.playsound(self.audio_first_stim_pathes[self.labels[ind_stim]])
                 # Reset the timer according the buffer time attribute
