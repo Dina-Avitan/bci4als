@@ -83,7 +83,7 @@ class MLModel:
         epochs.set_montage(montage)
 
         # Apply band-pass filter
-        epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+        epochs.filter(40., 1., fir_design='firwin', skip_by_annotation='edge', verbose=False)
         #Save epochs
         self.epochs = epochs
         # Prepare ICA
@@ -111,7 +111,7 @@ class MLModel:
         csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
         self.csp_space = Pipeline(
-            [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
+            [('asd', UnsupervisedSpatialFilter(PCA(11), average=True)), ('asdd', csp)]).fit(data, self.labels)
 
         csp_features = self.csp_space.transform(data)
 

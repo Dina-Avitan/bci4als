@@ -4,21 +4,27 @@ import copy
 import math
 from tkinter import filedialog, Tk
 import scipy.io
+from matplotlib.colors import ListedColormap
+from sklearn.datasets import make_classification, make_moons, make_circles
 from sklearn.decomposition import PCA
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import LogisticRegression, Lasso
 from sklearn.feature_selection import SelectFromModel, SequentialFeatureSelector
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from mne.decoding import CSP
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.ensemble import ExtraTreesClassifier, AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest, chi2, mutual_info_classif, SelectFromModel
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from skfeature.function.similarity_based import fisher_score
+from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from mne.decoding import UnsupervisedSpatialFilter
 from bci4als import ml_model, EEG
@@ -133,7 +139,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/22/unfiltered_model.pickle')
+    data2 = pd.read_pickle(r'../recordings/roy/50/pre_laplacian.pickle')
     #
     labels = data2.labels
 
@@ -143,7 +149,7 @@ def load_eeg():
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    data, _ = EEG.laplacian(data)
+    # data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
@@ -152,7 +158,7 @@ def load_eeg():
 
     # # Get CSP features
     csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=False)),('asdd',csp)]).fit_transform(data, labels)
+    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(11), average=True)),('asdd',csp)]).fit_transform(data, labels)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
@@ -235,18 +241,46 @@ def load_eeg():
 
 
 def get_feature_mat(model):
+    def ICA_perform(model):
+        """
+        Args:
+            model: the model before ICA transform
+            to_exclude: (list) list of the coordinates numbers to exclude
+
+        Returns: epochs array after ICA transform
+        """
+        epochs = model.epochs
+        ica = ICA(n_components=11, max_iter='auto', random_state=97)
+        ica.fit(epochs)
+        # ica.exclude = [0,1]
+        ica.detect_artifacts(epochs)
+        ica.apply(epochs)
+        return epochs
+    def trials_rejection(feature_mat, labels):
+        to_remove = []
+        nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
+        add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
+        to_remove += add_remove
+
+        func = lambda x: np.mean(np.abs(x),axis=0) > 1.5  # remove features with extreme values - 2 std over the mean
+        Z_bool = func(feature_mat)
+        add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
+        to_remove += add_remove
+        feature_mat = np.delete(feature_mat, to_remove, axis=0)
+        labels = np.delete(labels, to_remove, axis=0)
+        return feature_mat, labels
     # define parameters
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # get data
-    data = model.epochs.get_data()
     class_labels = model.labels
     feature_labels = []
     # get features
-    # CSP
-    lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False)#, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('CSP', csp), ('LDA', lda)]).fit_transform(data, class_labels)
+    data = ICA_perform(model).get_data()  # ICA
+    #Laplacian
+    data, _ = EEG.laplacian(data)
+    csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
+    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=False)),('asdd',csp)]).fit_transform(data,class_labels)
     [feature_labels.append(f'CSP_Component{i}') for i in range(csp_features.shape[1])]
     # Bandpower
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
@@ -254,20 +288,24 @@ def get_feature_mat(model):
     # relative bandpower
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in model.epochs.ch_names]
-    # hjorthMobility
-    hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
-    [feature_labels.append(f'hjorthMobility_{chan}') for chan in model.epochs.ch_names]
-    # LZC
-    LZC_features = ml_model.MLModel.LZC(data)
-    [feature_labels.append(f'LZC_{chan}') for chan in model.epochs.ch_names]
-    # DFA
-    DFA_features = ml_model.MLModel.DFA(data)
-    [feature_labels.append(f'DFA_{chan}') for chan in model.epochs.ch_names]
     # get all of them in one matrix
-    features_mat = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel,
-                                   hjorthMobility_features,LZC_features,DFA_features), axis=1)
+    features_mat = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
-    scaler.fit(features_mat)
+    features_mat = scaler.fit_transform(features_mat)
+    #Trial rejection
+    features_mat, labels = trials_rejection(features_mat, class_labels)
+    # Define selection algorithms
+    rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
+    mi_select = SelectKBest(mutual_info_classif, k=2)
+    # fisher_select = bandpower_features_wtf[:, fisher_score.fisher_score(bandpower_features_wtf,
+    #                                                                     labels)[0:int(math.sqrt(data.shape[0]))]]
+
+    # Define Pipelines
+    model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
+    features_mat = model.fit_transform(features_mat, class_labels)
+    features_mat = mi_select.fit_transform(features_mat, class_labels)
+    features_mat = features_mat[0:40]
+    class_labels = labels[0:40]
     return features_mat, class_labels, feature_labels
 def plot_SVM(feature_mat,labels):
     h = .02  # step size in the mesh
@@ -292,28 +330,130 @@ def plot_SVM(feature_mat,labels):
     plt.yticks(())
     plt.title('SVC with linear kernel')
     plt.show()
+def plot_calssifiers(datasets):
+    h = 0.02  # step size in the mesh
 
+    names = [
+        "Nearest Neighbors",
+        "Linear SVM",
+        "RBF SVM",
+        "Gaussian Process",
+        "Decision Tree",
+        "Random Forest",
+        "Neural Net",
+        "AdaBoost",
+        "Naive Bayes",
+        "QDA",
+    ]
 
-def epochs_z_score(epochs):
-    """
-    this function is for normalize all the electrods in epochs array by Z_score
-    Args:
-        epochs: epochs array
-    Returns: (ndarray) the data after normalizing all the electrods
-    """
-    data=epochs.get_data()
-    for i in range(len(data)):
-        scaler = StandardScaler()
-        scaler.fit(data[i].transpose())
-        array= scaler.transform(data[i].transpose())
-        data[i]= array.transpose()
-    return data
+    classifiers = [
+        KNeighborsClassifier(3),
+        SVC(kernel="linear", C=0.025),
+        SVC(gamma=2, C=1),
+        GaussianProcessClassifier(1.0 * RBF(1.0)),
+        DecisionTreeClassifier(max_depth=5),
+        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+        MLPClassifier(alpha=1, max_iter=1000),
+        AdaBoostClassifier(),
+        GaussianNB(),
+        QuadraticDiscriminantAnalysis(),
+    ]
+
+    X, y = make_classification(
+        n_features=2, n_redundant=0, n_informative=2, random_state=1, n_clusters_per_class=1
+    )
+    rng = np.random.RandomState(2)
+    X += 2 * rng.uniform(size=X.shape)
+    linearly_separable = (X, y)
+    figure = plt.figure(figsize=(27, 9))
+    i = 1
+    # iterate over datasets
+    for ds_cnt, ds in enumerate(datasets):
+        # preprocess dataset, split into training and test part
+        X, y = ds
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.4, random_state=42
+        )
+
+        x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+        y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
+        xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
+        # just plot the dataset first
+        cm = plt.cm.RdBu
+        cm_bright = ListedColormap(["#FF0000", "#0000FF"])
+        ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+        if ds_cnt == 0:
+            ax.set_title("Input data")
+        # Plot the training points
+        ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, edgecolors="k")
+        # Plot the testing points
+        ax.scatter(
+            X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm_bright, alpha=0.6, edgecolors="k"
+        )
+        ax.set_xlim(xx.min(), xx.max())
+        ax.set_ylim(yy.min(), yy.max())
+        ax.set_xticks(())
+        ax.set_yticks(())
+        i += 1
+
+        # iterate over classifiers
+        for name, clf in zip(names, classifiers):
+            ax = plt.subplot(len(datasets), len(classifiers) + 1, i)
+            clf.fit(X_train, y_train)
+            score = clf.score(X_test, y_test)
+
+            # Plot the decision boundary. For that, we will assign a color to each
+            # point in the mesh [x_min, x_max]x[y_min, y_max].
+            if hasattr(clf, "decision_function"):
+                Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+            else:
+                Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+
+            # Put the result into a color plot
+            print(Z)
+            Z = Z.reshape(xx.shape)
+            ax.contourf(xx, yy, Z, cmap=cm, alpha=0.8)
+
+            # Plot the training points
+            ax.scatter(
+                X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm_bright, edgecolors="k"
+            )
+            # Plot the testing points
+            ax.scatter(
+                X_test[:, 0],
+                X_test[:, 1],
+                c=y_test,
+                cmap=cm_bright,
+                edgecolors="k",
+                alpha=0.6,
+            )
+
+            ax.set_xlim(xx.min(), xx.max())
+            ax.set_ylim(yy.min(), yy.max())
+            ax.set_xticks(())
+            ax.set_yticks(())
+            if ds_cnt == 0:
+                ax.set_title(name)
+            ax.text(
+                xx.max() - 0.3,
+                yy.min() + 0.3,
+                ("%.2f" % score).lstrip("0"),
+                size=15,
+                horizontalalignment="right",
+            )
+            i += 1
+
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == '__main__':
-    model = pd.read_pickle(r'../recordings/noam/13/unfiltered_model.pickle')
+    # import pandas as pd
+    # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam/13/unfiltered_model.pickle')
+    # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/23/unfiltered_model.pickle')
+    # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
+    # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # playground()
     load_eeg()
-    # permutation_func()
-    # a, b, c = get_feature_mat(model)
-    # plot_SVM(a, b)
+    # plot_calssifiers(datasets)

@@ -155,25 +155,25 @@ class EEG:
 
         return self._board_to_mne(data, ch_names)
 
-    def get_features(self, channels: List[str], selected_funcs: List[str],
-                     notch: float = 50, low_pass: float = 4, high_pass: float = 50) -> NDArray:
-        """
-        Returns features of all data since last call to get_board_data method.
-        :return features: NDArray of shape (1, n_features)
-        """
-
-        # Get the raw data
-        data = self.get_raw_data(ch_names=channels)
-
-        # Filter
-        data = self.filter_data(data, notch, low_pass, high_pass)
-
-        # Extract features
-        features = extract_features(data.get_data()[np.newaxis], self.sfreq,
-                                    selected_funcs,
-                                    {'pow_freq_bands__freq_bands': np.array([8, 10, 12.5, 30])})
-
-        return features
+    # def get_features(self, channels: List[str], selected_funcs: List[str],
+    #                  notch: float = 50, low_pass: float = 4, high_pass: float = 50) -> NDArray:
+    #     """
+    #     Returns features of all data since last call to get_board_data method.
+    #     :return features: NDArray of shape (1, n_features)
+    #     """
+    #
+    #     # Get the raw data
+    #     data = self.get_raw_data(ch_names=channels)
+    #
+    #     # Filter
+    #     data = self.filter_data(data, notch, low_pass, high_pass)
+    #
+    #     # Extract features
+    #     features = extract_features(data.get_data()[np.newaxis], self.sfreq,
+    #                                 selected_funcs,
+    #                                 {'pow_freq_bands__freq_bands': np.array([8, 10, 12.5, 30])})
+    #
+    #     return features
 
     def clear_board(self):
         """Clear all data from the EEG board"""
@@ -221,14 +221,14 @@ class EEG:
                 raise LookupError("FTDI-manufactured device not found. Please check the dongle is connected")
             return FTDIlist[0].name
 
-    @staticmethod
-    def filter_data(data: mne.io.RawArray,
-                    notch: float, low_pass: float, high_pass: float) -> mne.io.RawArray:
-
-        # data.notch_filter(freqs=notch, verbose=False)
-        data.filter(l_freq=low_pass, h_freq=high_pass, verbose=False)
-
-        return data
+    # @staticmethod
+    # def filter_data(data: mne.io.RawArray,
+    #                 notch: float, low_pass: float, high_pass: float) -> mne.io.RawArray:
+    #
+    #     # data.notch_filter(freqs=notch, verbose=False)
+    #     data.filter(l_freq=low_pass, h_freq=high_pass, verbose=False)
+    #
+    #     return data
 
     @staticmethod
     def encode_marker(status: str, label: int, index: int):
