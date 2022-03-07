@@ -85,7 +85,7 @@ def plot_elec_model_ica(model, elec_num='all',range_time = 'all'):
     plt.suptitle('EEG elec over time-ICA', fontsize=16)
     plt.show()
 
-def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 3, fmax = 70):
+def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 1, fmax = 70):
     colors = ['blue','darkred','green']
     std_colors = ['lightsteelblue','salmon','palegreen']
     class_name = ['Right','Left','Idle']
@@ -93,6 +93,33 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
     for i_cls in classes:
         indices = [i for i in range(len(raw_model.labels)) if raw_model.labels[i] == i_cls]
         data = raw_model.epochs.get_data(item=indices)
+        f, Pxx = signal.welch(data, sr,window=str(sr),noverlap= 0.5*sr)
+        mean = np.ndarray.mean(Pxx, axis=0)
+        plt.plot(f,mean[elec],color=colors[i_cls], label = class_name[i_cls])
+        if show_std == True:
+            std = np.ndarray.std(Pxx, axis=0)
+            res1 = mean[elec] - std[elec]/2
+            res2 = mean[elec] + std[elec]/2
+            plt.plot(f,res1,color=std_colors[i_cls])
+            plt.plot(f, res2, color=std_colors[i_cls])
+            plt.fill_between(f,mean[elec], res1,color=std_colors[i_cls])
+            plt.fill_between(f, mean[elec], res2, color=std_colors[i_cls])
+    title_cls = '-'.join(class_name[i] for i in classes)
+    plt.title('Elec: '+f'{raw_model.epochs.ch_names[elec]}'+', Classes:  '+title_cls)
+    plt.legend()
+    plt.xlim(fmin, fmax)
+    plt.xlabel('frequency [Hz]')
+    plt.ylabel('PSD')#[V**2/Hz]?
+    plt.show()
+
+def plot_psd_classes_trials(raw_model, epoch, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 1, fmax = 70):
+    colors = ['blue','darkred','green']
+    std_colors = ['lightsteelblue','salmon','palegreen']
+    class_name = ['Right','Left','Idle']
+    sr = raw_model.epochs.info['sfreq']
+    for i_cls in classes:
+        indices = [i for i in range(len(raw_model.labels)) if raw_model.labels[i] == i_cls]
+        data = epoch.get_data(item=indices)
         f, Pxx = signal.welch(data, sr,window=str(sr),noverlap= 0.5*sr)
         mean = np.ndarray.mean(Pxx, axis=0)
         plt.plot(f,mean[elec],color=colors[i_cls], label = class_name[i_cls])
@@ -135,7 +162,7 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
         spec_dict['t'] = t
         spec_dict['f'] = f
     plot_spectrogram(spec_dict,elec)
-create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=25, nperseg=50,nfft = 125,scaling = 'density')
+
 def plot_spectrogram(spec_dict,elec):
     class_name = ['Right', 'Left', 'Idle','Right-Left diff']
     fig, axs = plt.subplots(2, 2, sharex=True, sharey=True)
