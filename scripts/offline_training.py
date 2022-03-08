@@ -12,7 +12,8 @@ def offline_experiment():
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2
     gain = {"1": 0, "2":  1, "4": 2, "6": 3, "8": 4, "12": 5, "24": 6}
-    configurations = ''.join([''.join(f"x{str(i + 1)}0{gain['6']}0110X") for i in range(8)] +
+    configurations = ''.join([''.join(f"x{str(i + 1)}0{gain['6']}0110X") for i in range(8)]
+                             +
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E']] + [
                 ''.join(f"x{i}131000X") for i in ['R', 'T', 'Y', 'U', 'I']])
 

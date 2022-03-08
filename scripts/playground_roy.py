@@ -137,7 +137,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'..\recordings\roy/56/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'..\recordings\roy/58/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -164,7 +164,7 @@ def load_eeg():
     # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
@@ -174,7 +174,7 @@ def load_eeg():
     # seperate the data before feature selection
     indices = np.arange(bandpower_features_wtf.shape[0])
     X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(bandpower_features_wtf,
-                                labels,indices, random_state=0)
+                                labels,indices, random_state=4)
 
     # Define selection algorithms
     rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
@@ -203,6 +203,12 @@ def load_eeg():
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     print(scores_mix3)
+    values = [scores_mix,scores_mix2,scores_mix3,scores_mix4,scores_mix5]
+    names = ['Linear SVM', 'RandomForest', 'NeuralNet','XGBC','ADA Boost']
+    plt.figure(figsize=(9, 3))
+    plt.bar(names, np.mean(values, axis=1))
+    plt.suptitle('Classifiers success rate for Roy recording n56')
+    plt.show()
 
     #print scores
     (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
