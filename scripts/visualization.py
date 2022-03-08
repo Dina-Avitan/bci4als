@@ -171,7 +171,7 @@ def plot_spectrogram(spec_dict,elec):
     # hide tick and tick label of the big axes
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     plt.grid(False)
-a
+
     plt.title('Elec: ' + f'{elec[0]}', fontsize=20,x = 0.4 , y = 1)
     for i, ax in enumerate(axs.flat):
         im = ax.pcolormesh(spec_dict['t'],spec_dict['f'] , spec_dict[str(i)][elec[1]], shading='gouraud',cmap = 'jet')
