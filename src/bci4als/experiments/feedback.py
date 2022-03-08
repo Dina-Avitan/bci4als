@@ -130,7 +130,7 @@ class Feedback:
                 if stim_sound:
                     playsound.playsound(audio_next_pathes[next_stim])
             elif next_stim == 'end':
-                if self.confident: 
+                if self.confident:
                     text = 'Well done!\nPress any key to continue\nThe end!'
                 else:
                     text = 'Skipping.\nPress any key to continue\nThe end!'

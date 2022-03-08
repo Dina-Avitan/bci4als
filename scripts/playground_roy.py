@@ -137,7 +137,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'..\recordings\roy/56/pre_laplacian.pickle')
     #
     labels = data2.labels
 

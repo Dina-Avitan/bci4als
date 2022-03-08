@@ -85,7 +85,7 @@ def plot_elec_model_ica(model, elec_num='all',range_time = 'all'):
     plt.suptitle('EEG elec over time-ICA', fontsize=16)
     plt.show()
 
-def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 1, fmax = 70):
+def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 0, fmax = 70):
     colors = ['blue','darkred','green']
     std_colors = ['lightsteelblue','salmon','palegreen']
     class_name = ['Right','Left','Idle']
@@ -365,49 +365,3 @@ mne.viz.set_browser_backend('qt')
 # plot_psd_classes(raw_model)
 # features_mat, class_lables, features_lables = get_feature_mat(data2)
 # histo_histo(features_mat, class_lables, features_lables)
-
-
-
-
-#plot_raw_elec(data3, elec_name='all',range_time = 'all')
-#ICA_noam(data2)
-# plot_elec_model(data2, elec_num='all',range_time = 'all')
-# plot_elec_model_ica(data2, elec_num='all',range_time = 'all')
-# plot_elec_model(data2, elec_num='all',range_time = (0,3))
-# plot_elec_model_ica(data2, elec_num='all',range_time = (0,2400))
-# labels = data2.labels
-# data = data2.epochs.get_data()
-# perm_c3 = (0, 3, 5, 9, 7, 1, 4, 6, 8, 10)
-# C3_not_laplacian = data[1][perm_c3[0]]
-# plt.plot(C3_not_laplacian)
-# #plt.show()
-# plt.plot(data[1][perm_c3[5]])
-# #plt.show()
-# plt.plot(data[1])
-# #plt.show()
-# for trial in range(data.shape[0]):
-#     # C3
-#     data[trial][perm_c3[0]] = (data[trial][perm_c3[0]]-data[trial][perm_c3[0]].mean())-\
-#                               (((data[trial][perm_c3[1]]-data[trial][perm_c3[1]].mean())
-#                               + (data[trial][perm_c3[2]]-data[trial][perm_c3[2]].mean())
-#                               + (data[trial][perm_c3[3]]-data[trial][perm_c3[3]].mean())
-#                               + (data[trial][perm_c3[4]]-data[trial][perm_c3[4]].mean())) / 4)
-#     # C4
-#     data[trial][perm_c3[5]] = (data[trial][perm_c3[5]] - data[trial][perm_c3[5]].mean()) - \
-#                               (((data[trial][perm_c3[6]] - data[trial][perm_c3[6]].mean())
-#                               + (data[trial][perm_c3[7]]  -data[trial][perm_c3[7]].mean())
-#                               + (data[trial][perm_c3[8]] - data[trial][perm_c3[8]].mean())
-#                               + (data[trial][perm_c3[9]] - data[trial][perm_c3[9]].mean())) / 4)
-#     new_data = np.delete(data[trial], [perm_c3[point] for point in [1, 2, 3, 4, 6, 7, 8, 9]], axis=0)
-#     if trial == 0:
-#         final_data = new_data[np.newaxis]
-#     else:
-#         final_data = np.vstack((final_data, new_data[np.newaxis]))
-# one_tr = final_data[1,:,:]
-# one_tr = one_tr.transpose()
-# plt.plot(one_tr)
-#plt.show()
-#for trial in range(data.shape[0]):
-# data=data2.epochs
-# data.plot(picks=data.picks, scalings=None, n_epochs=1, n_channels=len(data.ch_names))#, title='noam', events=data.events, event_colors=None, order=None, show=True, block=False, decim='auto', noise_cov=None, butterfly=False)
-
