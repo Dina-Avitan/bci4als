@@ -28,7 +28,7 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from mne.decoding import UnsupervisedSpatialFilter
 from bci4als import ml_model, EEG
-from sklearn import svm
+from sklearn import svm, manifold
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -36,6 +36,7 @@ from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
 
 def playground():
     # load eeg data
@@ -136,7 +137,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'../recordings/roy/63/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
     #
     labels = data2.labels
 
@@ -267,6 +268,7 @@ def get_feature_mat(model):
         to_remove += add_remove
         feature_mat = np.delete(feature_mat, to_remove, axis=0)
         labels = np.delete(labels, to_remove, axis=0)
+        print(f'trials rejected: {to_remove}')
         return feature_mat, labels
     # define parameters
     fs = 125
@@ -302,9 +304,17 @@ def get_feature_mat(model):
     # Define Pipelines
     model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
     features_mat = model.fit_transform(features_mat, class_labels)
-    features_mat = mi_select.fit_transform(features_mat, class_labels)
-    features_mat = features_mat[0:40]
-    class_labels = labels[0:40]
+    tsne = manifold.TSNE(
+        n_components=2,
+        init="random",
+        random_state=0,
+        perplexity=5,
+        learning_rate="auto",
+        n_iter=300,
+    )
+    features_mat = tsne.fit_transform(features_mat, class_labels)
+    # features_mat = mi_select.fit_transform(features_mat, class_labels)
+    class_labels = labels
     return features_mat, class_labels, feature_labels
 def plot_SVM(feature_mat,labels):
     h = .02  # step size in the mesh
@@ -343,19 +353,23 @@ def plot_calssifiers(datasets):
         "AdaBoost",
         "Naive Bayes",
         "QDA",
+        "XGBC",
     ]
 
     classifiers = [
         KNeighborsClassifier(3),
-        SVC(kernel="linear", C=1),
+        SVC(decision_function_shape='ovo', kernel='linear', tol=1e-4),
         SVC(gamma=2, C=1),
         GaussianProcessClassifier(1.0 * RBF(1.0)),
         DecisionTreeClassifier(max_depth=5),
-        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-        MLPClassifier(alpha=1, max_iter=1000),
+        RandomForestClassifier(random_state=0),
+        OneVsRestClassifier(
+            MLPClassifier(solver='adam', alpha=1e-6, hidden_layer_sizes=[80] * 5, max_iter=400, random_state=0)),
         AdaBoostClassifier(),
         GaussianNB(),
         QuadraticDiscriminantAnalysis(),
+        OneVsRestClassifier(XGBClassifier()),
+
     ]
     figure = plt.figure(figsize=(27, 9))
     i = 1
@@ -379,11 +393,13 @@ def plot_calssifiers(datasets):
         if ds_cnt == 0:
             ax.set_title("Input data")
         # Plot the training points
-        ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm, edgecolors="k")
+        asd = ax.scatter(X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm,alpha=0.8, edgecolors="k")
         # Plot the testing points
         ax.scatter(
-            X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm, edgecolors="y"
+            X_test[:, 0], X_test[:, 1], c=y_test, cmap=cm,alpha=0.8, edgecolors="y"
         )
+        ax.add_artist(ax.legend(*asd.legend_elements(),
+                            loc="upper left", title="Classes"))
         ax.set_xlim(xx.min(), xx.max())
         ax.set_ylim(yy.min(), yy.max())
         ax.set_xticks(())
@@ -407,13 +423,10 @@ def plot_calssifiers(datasets):
             # Put the result into a color plot
             Z = Z.reshape(xx.shape)
             ax.contourf(xx, yy, Z, cmap=cm, alpha=0.8)
-            print(np.min(xx))
-            print(np.min(yy))
-            print(Z)
 
             # Plot the training points
             ax.scatter(
-                X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm, edgecolors="k"
+                X_train[:, 0], X_train[:, 1], c=y_train, cmap=cm,alpha=0.8, edgecolors="k"
             )
             # Plot the testing points
             ax.scatter(
@@ -421,6 +434,7 @@ def plot_calssifiers(datasets):
                 X_test[:, 1],
                 c=y_test,
                 cmap=cm,
+                alpha=0.8,
                 edgecolors="y",
             )
 
@@ -438,17 +452,16 @@ def plot_calssifiers(datasets):
                 horizontalalignment="right",
             )
             i += 1
-
     plt.tight_layout()
+    plt.savefig("High resoltion.png", dpi=300)
     plt.show()
 
-
 if __name__ == '__main__':
-    import pandas as pd
-    model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\noam/13/unfiltered_model.pickle')
-    model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/23/unfiltered_model.pickle')
-    model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
-    datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
+    # import pandas as pd
+    # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
+    # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
+    # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
+    # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # playground()
-    # load_eeg()
-    plot_calssifiers(datasets)
+    load_eeg()
+    # plot_calssifiers(datasets)
