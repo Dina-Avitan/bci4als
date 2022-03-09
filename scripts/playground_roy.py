@@ -4,6 +4,7 @@ import copy
 import math
 from tkinter import filedialog, Tk
 import scipy.io
+import sktime.classification.interval_based
 from matplotlib.colors import ListedColormap
 from sklearn.datasets import make_classification, make_moons, make_circles
 from sklearn.decomposition import PCA
@@ -36,7 +37,6 @@ from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-
 
 def playground():
     # load eeg data
@@ -107,8 +107,8 @@ def load_eeg():
         return feature_mat, labels
 
     fs = 125
-    bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    # bands = np.matrix('1 4; 7 12; 12 15; 17 22; 1 40; 25 40')
+    # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
     # # Ofir's data
@@ -137,7 +137,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'..\recordings\roy/70/trained_model.pickle')
+    data2 = pd.read_pickle(r'..\recordings\roy/57/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -157,14 +157,14 @@ def load_eeg():
 
     # # Get CSP features
     csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(11), average=True)),('asdd',csp)]).fit_transform(data, labels)
+    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data, labels)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
@@ -202,6 +202,7 @@ def load_eeg():
     scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+
     print(scores_mix3)
     values = [scores_mix,scores_mix2,scores_mix3,scores_mix4,scores_mix5]
     names = ['Linear SVM', 'RandomForest', 'NeuralNet','XGBC','ADA Boost']
@@ -225,7 +226,7 @@ def load_eeg():
 
     pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     print(pipeline_RF.predict(bandpower_features_wtf[test_ind, :]))
-    print(np.sum(pipeline_RF.predict(bandpower_features_wtf[test_ind, :])==np.array(labels)[test_ind]))
+    print(np.sum(pipeline_RF.predict(bandpower_features_wtf[test_ind, :])==np.array(labels)[test_ind])/len(np.array(labels)[test_ind]))
     ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
     plt.show()

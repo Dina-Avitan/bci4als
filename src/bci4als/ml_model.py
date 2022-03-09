@@ -97,7 +97,7 @@ class MLModel:
 
         # Extract spectral features
         data = copy.deepcopy(self.epochs)
-        bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+        bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
         fs = self.epochs.info['sfreq']
         #Apply ICA
         data = self.ica.apply(data).get_data()
@@ -151,7 +151,7 @@ class MLModel:
 
     def online_predict(self, data: NDArray, eeg: EEG):
         # Prepare parameters
-        bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+        bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
         fs = eeg.sfreq
         # Get features
         csp_features = self.csp_space.transform(data[np.newaxis])[0]
@@ -169,9 +169,6 @@ class MLModel:
         # Append X to trials
         [self.trials.append(trial) for trial in X]
         # Append y to labels
-        print(y)
-        print(self.labels)
-        print(type(y))
         for label in y:
             self.labels = np.append(self.labels, label)
         # update self.epochs
