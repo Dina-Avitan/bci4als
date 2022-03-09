@@ -158,7 +158,7 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
             f, t, Sxx_left = scipy.signal.spectrogram(data_left,  sr, window=str(nwindow), noverlap=noverlap, nperseg=nperseg,nfft=nfft)
             mean_right = np.ndarray.mean(Sxx_rigt, axis=0)
             mean_left = np.ndarray.mean(Sxx_left, axis=0)
-            spec_dict[str(i_spec)] = mean_right-mean_left
+            spec_dict[str(i_spec)] = abs(mean_right-mean_left)
         spec_dict['t'] = t
         spec_dict['f'] = f
     plot_spectrogram(spec_dict,elec)
@@ -352,10 +352,11 @@ def ndarray_to_raw(data, ch_names):
     return raw
 
 data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\noam\19\pre_laplacian.pickle')
-data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
-raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
-#
+# data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
+# raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
+# #
 #epochs_to_raw(data2.epochs)
+create_spectrogram(data2)
 """
 %matplotlib qt
 %gui qt
