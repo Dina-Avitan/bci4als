@@ -37,6 +37,7 @@ from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+import matplotlib.pyplot as plt
 
 def playground():
     # load eeg data
@@ -137,7 +138,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'..\recordings\roy/57/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -211,6 +212,8 @@ def load_eeg():
     plt.suptitle('Classifiers success rate for Roy recording n56')
     plt.show()
 
+    plt.figure(figsize=(9, 3))
+
     #print scores
     (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
     (print(f"RandomForest rate is: {np.mean(scores_mix2)*100}%"))
@@ -220,32 +223,38 @@ def load_eeg():
 
     # fit pipelines for the confusion matrix and get matrices
     pipeline_SVM.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
+    mat1 = ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    plt.show()
+    ax = plt.subplot(1,5,1)
+    mat1.plot(ax=ax)
 
     pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     print(pipeline_RF.predict(bandpower_features_wtf[test_ind, :]))
     print(np.sum(pipeline_RF.predict(bandpower_features_wtf[test_ind, :])==np.array(labels)[test_ind])/len(np.array(labels)[test_ind]))
-    ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
+    mat2 = ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    plt.show()
+    ax = plt.subplot(1,5,2)
+    mat2.plot(ax=ax)
 
     pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
+    mat3 = ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    plt.show()
+    ax = plt.subplot(1,5,3)
+    mat3.plot(ax=ax)
 
     pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
+    mat4 = ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    plt.show()
+    ax = plt.subplot(1,5,4)
+    mat4.plot(ax=ax)
 
     pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
+    mat5 = ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    plt.show()
+    ax = plt.subplot(1,5,5)
+    mat5.plot(ax=ax)
 
+    plt.show()
 
 def get_feature_mat(model):
     def ICA_perform(model):
@@ -317,7 +326,7 @@ def get_feature_mat(model):
         random_state=0,
         perplexity=5,
         learning_rate="auto",
-        n_iter=300,
+        n_iter=350,
     )
     features_mat = tsne.fit_transform(features_mat, class_labels)
     # features_mat = mi_select.fit_transform(features_mat, class_labels)
@@ -464,11 +473,11 @@ def plot_calssifiers(datasets):
     plt.show()
 
 if __name__ == '__main__':
-    # import pandas as pd
-    # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
-    # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
-    # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
-    # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
+    import pandas as pd
+    model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/71/unfiltered_model.pickle')
+    model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
+    model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
+    datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # playground()
-    load_eeg()
-    # plot_calssifiers(datasets)
+    # load_eeg()
+    plot_calssifiers(datasets)
