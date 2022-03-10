@@ -356,12 +356,13 @@ def ndarray_to_raw(data, ch_names):
 def plot_online_results(path):
     with open(path) as f:
         data = json.load(f)
-    rep_on_class = len(data[0])
+    #rep_on_class = len(data[0])
     num_of_trials_class = len(data)/3
     results_dict = {'0': 0, '1':0,'2':0}
     expected = []
     prediction = []
     for trial in data:
+        rep_on_class = len(trial)
         for ind in trial:
             if ind[0]==ind[1]:
                 results_dict[str(ind[0])] += 1/(rep_on_class*num_of_trials_class)
@@ -381,30 +382,29 @@ def plot_online_results(path):
 
     # the confusion matrix
     cm = confusion_matrix(expected,prediction)
-    ax = seaborn.heatmap(cm/np.sum(cm),fmt='.2%', annot=True, cmap='Blues')
+    ax = seaborn.heatmap((cm*3)/np.sum(cm),fmt='.2%', annot=True, cmap='Blues')
     ax.set_title('Online results - confusion matrix\n')
     ax.set_xlabel('Predicted Values')
     ax.set_ylabel('Actual Values ')
-    ## Ticket labels - List must be in alphabetical order
+    ## Ticket labels - List must be in alphabetical order7k
     ax.xaxis.set_ticklabels(labels)
     ax.yaxis.set_ticklabels(labels)
     plt.show()
 
-plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\roy\74\results.json')
-
-
-data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\89\pre_laplacian.pickle')
+plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\roy\89\results.json')
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\89\trained_model.pickle')
 # data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
 # raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
 # #
 #epochs_to_raw(data2.epochs)
 create_spectrogram(data2)
+plot_psd_classes(data2)
 """
 %matplotlib qt
 %gui qt
 mne.viz.set_browser_backend('qt')
 """
 
-# plot_psd_classes(raw_model)
-# features_mat, class_lables, features_lables = get_feature_mat(data2)
-# histo_histo(features_mat, class_lables, features_lables)
+
+features_mat, class_lables, features_lables = get_feature_mat(data2)
+histo_histo(features_mat, class_lables, features_lables)

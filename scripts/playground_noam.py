@@ -137,7 +137,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'..\recordings\roy/58/trained_model.pickle')
+    data2 = pd.read_pickle(r'..\recordings\roy/87/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -207,7 +207,7 @@ def load_eeg():
     names = ['Linear SVM', 'RandomForest', 'NeuralNet','XGBC','ADA Boost']
     plt.figure(figsize=(9, 3))
     plt.bar(names, np.mean(values, axis=1))
-    plt.suptitle('Classifiers success rate for Roy recording n56')
+    plt.suptitle('Classifiers success rate')
     plt.show()
 
     #print scores
@@ -263,7 +263,7 @@ def load_eeg():
     ax5.set_title('ADA', size='large', fontweight='bold')
 
     # another properties
-    fig.suptitle(f'Confusion matrixes', fontsize=20, fontweight='bold')
+    fig.suptitle(f'Confusion matrices', fontsize=20, fontweight='bold')
     fig.tight_layout(pad=2.0)
     textstr = '\n'.join(('0 - Right','1 - Left','2 - Idle'))
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
