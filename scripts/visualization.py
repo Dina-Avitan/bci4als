@@ -346,7 +346,7 @@ def epochs_to_raw(epochs):
 
 def ndarray_to_raw(data, ch_names):
     comb_data = [data[i] for i in range(len(data))]
-    comb_data = np.concatenate(data, 1)
+    comb_data = np.concatenate(comb_data, 1)
     info= mne.create_info(ch_names=ch_names,sfreq= 125 , ch_types='eeg')
     raw = mne.io.RawArray(comb_data, info)
     return raw

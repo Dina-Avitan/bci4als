@@ -217,54 +217,57 @@ def load_eeg():
     (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
     (print(f"ADA rate is: {np.mean(scores_mix5)*100}%"))
 
-    # fit pipelines for the confusion matrix and get matrices
-    # cm = ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
-    #                                       np.array(labels)[test_ind])
-    # fig = plt.figure()
-    # ax = fig.add_subplot(212)
-    # cax = ax.matshow(cm)
-    # # ax.set_xticklabels([''] + labels)
-    # # ax.set_yticklabels([''] + labels)
-    # plt.show()
-    plt.subplot(211)
+    #### display confusion matrixes ####
+    fig = plt.figure()
+    fontsize = 11
+
+    # SVM
     pipeline_SVM.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
-                                           np.array(labels)[test_ind])
-    plt.subplot(212)
+    mat1 = ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
+                                              np.array(labels)[test_ind])
+    ax1 = fig.add_subplot(231)
+    mat1.plot(ax=ax1)
+    ax1.set_title('SVM', fontsize=fontsize, fontweight='bold')
+
+    # RF
     pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
-                                           np.array(labels)[test_ind])
+    mat2 = ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
+                                                 np.array(labels)[test_ind])
+    ax2 = fig.add_subplot(232)
+    mat2.plot(ax =ax2)
+    ax2.set_title('RF', fontsize=fontsize, fontweight='bold')
+
+    # MLP
+    pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    mat3 = ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
+                                                 np.array(labels)[test_ind])
+    ax3 = fig.add_subplot(233)
+    mat3.plot(ax=ax3)
+    ax3.set_title('MLP', fontsize=fontsize, fontweight='bold')
+
+    # XGB
+    pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    mat4 = ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
+                                                 np.array(labels)[test_ind])
+    ax4 = fig.add_subplot(234)
+    mat4.plot(ax=ax4)
+    ax4.set_title('XGB', fontsize=fontsize, fontweight='bold')
+
+    # ADA
+    pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
+    mat5 = ConfusionMatrixDisplay.from_estimator(pipeline_ADA, bandpower_features_wtf[test_ind, :],
+                                                 np.array(labels)[test_ind])
+    ax5 = fig.add_subplot(235)
+    mat5.plot(ax=ax5)
+    ax5.set_title('ADA', size='large', fontweight='bold')
+
+    # another properties
+    fig.suptitle(f'Confusion matrixes', fontsize=20, fontweight='bold')
+    fig.tight_layout(pad=3.0)
+    textstr = '\n'.join(('0 - Right','1 - Left','2 - Idle'))
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    fig.text(0.77, 0.29, textstr, fontsize=11, verticalalignment='top', bbox=props)
     plt.show()
-    # fig, axs = plt.subplots(2, 5, figsize=(16, 10), facecolor='w', edgecolor='k')
-    # axs = axs.ravel()
-    # pipeline_SVM.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    # axs[0].ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
-    #                                       np.array(labels)[test_ind])
-    # axs[0].set_title('SVM', size='large', fontweight='bold')
-    #
-    # pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    # axs[1].ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
-    #                                       np.array(labels)[test_ind])
-    # axs[1].set_title('RF', size='large', fontweight='bold')
-    #
-    # pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    # axs[2].ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
-    #                                       np.array(labels)[test_ind])
-    # axs[2].set_title('MLP', size='large', fontweight='bold')
-    #
-    # pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    # axs[3].ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
-    #                                       np.array(labels)[test_ind])
-    # axs[3].set_title('XGB', size='large', fontweight='bold')
-    #
-    # pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    # axs[4].ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
-    #                                       np.array(labels)[test_ind])
-    # axs[4].set_title('ADA', size='large', fontweight='bold')
-    #
-    # fig.suptitle(f'Confusion matrixes',size='xx-large',fontweight='bold')
-    # #fig.text(0.04, 0.5, 'Probability', va='center', rotation='vertical',size='xx-large',fontweight='bold')
-    # plt.show()
 
 def get_feature_mat(model):
     def ICA_perform(model):
