@@ -18,7 +18,7 @@ def run_experiment(model_path: str):
     CYTON_DAISY = 2
 
     # select buffer time
-    buffer_time = 5
+    buffer_time = 4
     # if model.epochs.get_data()[0].shape[1]//125 != buffer_time:
     #     raise IndexError(f"Model buffer time must match online buffer time. change buffer time to"
     #                      f" {model.epochs.get_data()[0]//125} or change model")
@@ -37,7 +37,7 @@ def run_experiment(model_path: str):
 
 if __name__ == '__main__':
 
-    model_path = r'../recordings/roy/72/trained_model.pickle'
+    model_path = r'../recordings/roy/89/trained_model.pickle'
     # model_path = None  # use if synthetic
     run_experiment(model_path=model_path)
 
