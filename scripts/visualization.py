@@ -393,7 +393,7 @@ def plot_online_results(path):
 plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\roy\74\results.json')
 
 
-data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\noam\19\pre_laplacian.pickle')
+data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\89\pre_laplacian.pickle')
 # data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
 # raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
 # #
