@@ -16,7 +16,9 @@ from scipy import signal
 import scipy
 import scipy.io
 from copy import copy
-
+import json
+from sklearn.metrics import confusion_matrix
+import seaborn
 
 def plot_raw_elec(trials, elec_name='all',range_time = 'all'):
     '''
@@ -158,7 +160,7 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
             f, t, Sxx_left = scipy.signal.spectrogram(data_left,  sr, window=str(nwindow), noverlap=noverlap, nperseg=nperseg,nfft=nfft)
             mean_right = np.ndarray.mean(Sxx_rigt, axis=0)
             mean_left = np.ndarray.mean(Sxx_left, axis=0)
-            spec_dict[str(i_spec)] = mean_right-mean_left
+            spec_dict[str(i_spec)] = abs(mean_right-mean_left)
         spec_dict['t'] = t
         spec_dict['f'] = f
     plot_spectrogram(spec_dict,elec)
@@ -346,16 +348,57 @@ def epochs_to_raw(epochs):
 
 def ndarray_to_raw(data, ch_names):
     comb_data = [data[i] for i in range(len(data))]
-    comb_data = np.concatenate(data, 1)
+    comb_data = np.concatenate(comb_data, 1)
     info= mne.create_info(ch_names=ch_names,sfreq= 125 , ch_types='eeg')
     raw = mne.io.RawArray(comb_data, info)
     return raw
 
+def plot_online_results(path):
+    with open(path) as f:
+        data = json.load(f)
+    rep_on_class = len(data[0])
+    num_of_trials_class = len(data)/3
+    results_dict = {'0': 0, '1':0,'2':0}
+    expected = []
+    prediction = []
+    for trial in data:
+        for ind in trial:
+            if ind[0]==ind[1]:
+                results_dict[str(ind[0])] += 1/(rep_on_class*num_of_trials_class)
+            expected.append(ind[0])
+            prediction.append(ind[1])
+
+    # the bar plot
+    labels = ['Right', 'Left', 'Idle']
+    classes = list(results_dict.keys())
+    values = list(results_dict.values())
+    plt.bar(classes,values,color = (0.5,0.1,0.5,0.6))
+    plt.title('Online results - The prediction percentage for each class\n')
+    plt.xlabel('Prediction percentage')
+    plt.ylabel('Classes ')
+    plt.xticks(classes,labels)
+    plt.show()
+
+    # the confusion matrix
+    cm = confusion_matrix(expected,prediction)
+    ax = seaborn.heatmap(cm/np.sum(cm),fmt='.2%', annot=True, cmap='Blues')
+    ax.set_title('Online results - confusion matrix\n')
+    ax.set_xlabel('Predicted Values')
+    ax.set_ylabel('Actual Values ')
+    ## Ticket labels - List must be in alphabetical order
+    ax.xaxis.set_ticklabels(labels)
+    ax.yaxis.set_ticklabels(labels)
+    plt.show()
+
+plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\roy\74\results.json')
+
+
 data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\noam\19\pre_laplacian.pickle')
-data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
-raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
-#
+# data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
+# raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
+# #
 #epochs_to_raw(data2.epochs)
+create_spectrogram(data2)
 """
 %matplotlib qt
 %gui qt
