@@ -114,7 +114,7 @@ class OnlineExperiment(Experiment):
             sfreq: int = self.eeg.sfreq
             info = mne.create_info(ch_names, sfreq, ch_types)
             n_samples: int = min([t.shape[0] for t in data])  # get the minimum length of each elec
-            epochs_array: np.ndarray = (np.stack([t[:self.model.epochs.get_data()[0].shape[1]] for t in data]))[np.newaxis]  # make the elecs same size
+            epochs_array: np.ndarray = (np.stack([t[:self.model.epochs.get_data().shape[2]] for t in data]))[np.newaxis]  # make the elecs same size
             # Get epochs object for prediction and another one for adding it to the data
             epochs = mne.EpochsArray(epochs_array, info)
             epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)

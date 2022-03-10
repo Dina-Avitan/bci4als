@@ -3,6 +3,8 @@
 import copy
 import math
 from tkinter import filedialog, Tk
+
+import mne
 import scipy.io
 import sktime.classification.interval_based
 from matplotlib.colors import ListedColormap
@@ -138,18 +140,18 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     #
     labels = data2.labels
 
     # Choose clean data or not
     # data = data2.epochs.get_data()
-    data = ICA_perform(data2).get_data()  # ICA
+    data = ICA_perform(data2).get_data() # ICA
     print(data.shape)
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    data, _ = EEG.laplacian(data)
+    # data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
@@ -198,11 +200,11 @@ def load_eeg():
     pipeline_XGB = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', xgb_classifier)])
     pipeline_ADA = Pipeline([('feat_selecting', mi_select),('classify', ada_classifier)])
     # get scores with CV for each pipeline
-    scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=3, n_jobs=1)
+    scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=3, n_jobs=1)
+    scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=3, n_jobs=1)
+    scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=3, n_jobs=1)
+    scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=3, n_jobs=1)
 
     print(scores_mix3)
     values = [scores_mix,scores_mix2,scores_mix3,scores_mix4,scores_mix5]
@@ -324,9 +326,9 @@ def get_feature_mat(model):
         n_components=2,
         init="random",
         random_state=0,
-        perplexity=5,
+        perplexity=35,
         learning_rate="auto",
-        n_iter=350,
+        n_iter=1500,
     )
     features_mat = tsne.fit_transform(features_mat, class_labels)
     # features_mat = mi_select.fit_transform(features_mat, class_labels)
@@ -473,11 +475,11 @@ def plot_calssifiers(datasets):
     plt.show()
 
 if __name__ == '__main__':
-    import pandas as pd
-    model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/71/unfiltered_model.pickle')
-    model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
-    model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
-    datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
+    # import pandas as pd
+    # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/71/pre_laplacian.pickle')
+    # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
+    # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
+    # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # playground()
-    # load_eeg()
-    plot_calssifiers(datasets)
+    load_eeg()
+    # plot_calssifiers(datasets)
