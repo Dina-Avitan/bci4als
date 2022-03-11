@@ -142,7 +142,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -213,7 +213,7 @@ def load_eeg():
     names = ['Linear SVM', 'RandomForest', 'NeuralNet','XGBC','ADA Boost']
     plt.figure(figsize=(9, 3))
     plt.bar(names, np.mean(values, axis=1))
-    plt.suptitle('Classifiers success rate for Roy recording n56')
+    plt.suptitle('Classifiers prediction rate')
     plt.show()
 
     plt.figure(figsize=(9, 3))
