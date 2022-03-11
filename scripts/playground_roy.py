@@ -43,17 +43,6 @@ from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
 
-def playground():
-    # load eeg data
-    root = Tk()
-    root.withdraw()
-    file_path = filedialog.askopenfilename()
-    raw_model = pd.read_pickle(fr'{file_path}')
-    raw_model.offline_training(model_type='simple_svm')
-    scores = raw_model.cross_val()
-    (print(f"Prediction rate is: {scores[0]}%"))
-
-
 def load_eeg():
     def ICA_check(unfiltered_model):
         """
@@ -259,7 +248,6 @@ def load_eeg():
     mat5.plot(ax=ax)
 
     plt.show()
-
 def get_feature_mat(model):
     def ICA_perform(model):
         """
@@ -512,7 +500,22 @@ def plot_online_results(path):
     ax.yaxis.set_ticklabels(labels)
     plt.show()
 
-
+def over_time_pred(recording_paths):
+    tot_class = 0
+    success_per_trial = [0] * 5
+    for path_results in recording_paths:
+        with open(path_results) as f:
+            data = json.load(f)
+        for trial in data:
+            for classification_ind, classification in enumerate(trial):
+                if classification[0] == classification[1]:
+                    success_per_trial[classification_ind] += 1
+                    tot_class +=1
+    names = [f'trial {ind + 1}' for ind in range(len(data[0]))]
+    plt.figure(figsize=(9, 3))
+    plt.bar(names, np.array(success_per_trial)/tot_class)
+    plt.suptitle('Over-time online learning trial success rate out of total classification attempts')
+    plt.show()
 
 if __name__ == '__main__':
     import pandas as pd
@@ -523,4 +526,6 @@ if __name__ == '__main__':
     # playground()
     # load_eeg()
     plot_calssifiers(datasets)
-    # plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\89\results.json')
+    plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\89\results.json')
+    over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
+                   for rec in [88]])
