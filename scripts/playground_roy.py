@@ -6,8 +6,10 @@ from tkinter import filedialog, Tk
 
 import mne
 import scipy.io
+import seaborn
 import sktime.classification.interval_based
 from matplotlib.colors import ListedColormap
+import json
 from sklearn.datasets import make_classification, make_moons, make_circles
 from sklearn.decomposition import PCA
 from sklearn.gaussian_process import GaussianProcessClassifier
@@ -21,7 +23,7 @@ from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.ensemble import ExtraTreesClassifier, AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest, chi2, mutual_info_classif, SelectFromModel
-from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -140,7 +142,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
     #
     labels = data2.labels
 
@@ -328,7 +330,7 @@ def get_feature_mat(model):
         random_state=0,
         perplexity=35,
         learning_rate="auto",
-        n_iter=1500,
+        n_iter=3000,
     )
     features_mat = tsne.fit_transform(features_mat, class_labels)
     # features_mat = mi_select.fit_transform(features_mat, class_labels)
@@ -473,13 +475,52 @@ def plot_calssifiers(datasets):
     plt.tight_layout()
     plt.savefig("High resoltion.png", dpi=300)
     plt.show()
+def plot_online_results(path):
+    with open(path) as f:
+        data = json.load(f)
+    rep_on_class = len(data[0])
+    num_of_trials_class = len(data)/3
+    results_dict = {'0': 0, '1':0,'2':0}
+    expected = []
+    prediction = []
+    for trial in data:
+        for ind in trial:
+            if ind[0]==ind[1]:
+                results_dict[str(ind[0])] += 1/(rep_on_class*num_of_trials_class)
+            expected.append(ind[0])
+            prediction.append(ind[1])
+
+    # the bar plot
+    labels = ['Right', 'Left', 'Idle']
+    classes = list(results_dict.keys())
+    values = list(results_dict.values())
+    plt.bar(classes,values,color = (0.5,0.1,0.5,0.6))
+    plt.title('Online results - The prediction percentage for each class\n')
+    plt.xlabel('Prediction percentage')
+    plt.ylabel('Classes ')
+    plt.xticks(classes,labels)
+    plt.show()
+
+    # the confusion matrix
+    cm = confusion_matrix(expected,prediction)
+    ax = seaborn.heatmap(cm/np.sum(cm),fmt='.2%', annot=True, cmap='Blues')
+    ax.set_title('Online results - confusion matrix\n')
+    ax.set_xlabel('Predicted Values')
+    ax.set_ylabel('Actual Values ')
+    ## Ticket labels - List must be in alphabetical order
+    ax.xaxis.set_ticklabels(labels)
+    ax.yaxis.set_ticklabels(labels)
+    plt.show()
+
+
 
 if __name__ == '__main__':
-    # import pandas as pd
-    # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/71/pre_laplacian.pickle')
-    # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
-    # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
-    # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
+    import pandas as pd
+    model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
+    model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
+    datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # playground()
-    load_eeg()
-    # plot_calssifiers(datasets)
+    # load_eeg()
+    plot_calssifiers(datasets)
+    # plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\89\results.json')
