@@ -278,12 +278,17 @@ def laplacian(model):
     data = final_data
     return data
 
-def get_feature_mat(model):
+def get_feature_mat(model, do_laplacian = True):
     # define parameters
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # get data
-    data = model.epochs.get_data()
+    if do_laplacian:
+        data = laplacian(model)
+        chan_list = ["c3", "c4", "cz"]
+    else:
+        data = model.epochs.get_data()
+        chan_list = model.epochs.ch_names
     class_labels = model.labels
     feature_labels = []
     # get features
@@ -294,19 +299,19 @@ def get_feature_mat(model):
     [feature_labels.append(f'CSP_Component{i}') for i in range(csp_features.shape[1])]
     # Bandpower
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
-    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in model.epochs.ch_names]
+    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in chan_list]
     # relative bandpower
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in model.epochs.ch_names]
+    [feature_labels.append(f'BP_non_rel{np.ravel(i)}_{chan}') for i in bands for chan in chan_list]
     # hjorthMobility
     hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
-    [feature_labels.append(f'hjorthMobility_{chan}') for chan in model.epochs.ch_names]
+    [feature_labels.append(f'hjorthMobility_{chan}') for chan in chan_list]
     # LZC
     LZC_features = ml_model.MLModel.LZC(data)
-    [feature_labels.append(f'LZC_{chan}') for chan in model.epochs.ch_names]
+    [feature_labels.append(f'LZC_{chan}') for chan in chan_list]
     # DFA
     DFA_features = ml_model.MLModel.DFA(data)
-    [feature_labels.append(f'DFA_{chan}') for chan in model.epochs.ch_names]
+    [feature_labels.append(f'DFA_{chan}') for chan in chan_list]
     # get all of them in one matrix
     features_mat = np.concatenate((csp_features,bandpower_features_new, bandpower_features_rel,
                                    hjorthMobility_features,LZC_features,DFA_features), axis=1)
@@ -391,14 +396,14 @@ def plot_online_results(path):
     ax.yaxis.set_ticklabels(labels)
     plt.show()
 
-plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\roy\89\results.json')
+#plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\roy\89\results.json')
 data2 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\89\trained_model.pickle')
 # data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
 # raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
 # #
 #epochs_to_raw(data2.epochs)
-create_spectrogram(data2)
-plot_psd_classes(data2)
+# create_spectrogram(data2)
+# plot_psd_classes(data2)
 """
 %matplotlib qt
 %gui qt
