@@ -92,12 +92,13 @@ def load_eeg():
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=0) > 1.5  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1.8 # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
         feature_mat = np.delete(feature_mat, to_remove, axis=0)
         labels = np.delete(labels, to_remove, axis=0)
+        print(f'trials removed: {to_remove}')
         return feature_mat, labels
 
     fs = 125
@@ -131,7 +132,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -142,7 +143,7 @@ def load_eeg():
     # data = epochs_z_score(data)  # z score?
 
     #Laplacian
-    # data, _ = EEG.laplacian(data)
+    data, _ = EEG.laplacian(data)
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
@@ -232,22 +233,16 @@ def load_eeg():
     pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     mat3 = ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    ax = plt.subplot(1,5,3)
-    mat3.plot(ax=ax)
+
 
     pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     mat4 = ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    ax = plt.subplot(1,5,4)
-    mat4.plot(ax=ax)
 
     pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     mat5 = ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    ax = plt.subplot(1,5,5)
-    mat5.plot(ax=ax)
 
-    plt.show()
 def get_feature_mat(model):
     def ICA_perform(model):
         """
@@ -518,14 +513,13 @@ def over_time_pred(recording_paths):
     plt.show()
 
 if __name__ == '__main__':
-    import pandas as pd
-    model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
-    model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
-    model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
-    datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    # playground()
-    # load_eeg()
-    plot_calssifiers(datasets)
-    plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\89\results.json')
-    over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
-                   for rec in [88]])
+    # import pandas as pd
+    # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
+    # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
+    # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
+    load_eeg()
+    # plot_calssifiers(datasets)
+    # plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\89\results.json')
+    # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
+    #                for rec in [88]])

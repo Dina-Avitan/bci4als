@@ -141,7 +141,7 @@ class MLModel:
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=0) > 1.8  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1.5  # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
