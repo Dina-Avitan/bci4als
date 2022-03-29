@@ -114,9 +114,9 @@ def load_eeg():
                 seed = data[trial_ind,names_dict[curr_orth_elec], :]
                 everything_else = list(names_dict.values())
                 everything_else.pop(names_dict[curr_orth_elec])
-                data[trial_ind,everything_else, :] = np.array([np.multiply(np.imag(np.multiply(elec_ts,
-                                (np.conj(seed)/np.abs(seed)))),(np.conj(seed)*1j / np.abs(seed))) for elec_ts in
-                                                                 trial_without_curr_elec])
+                data[trial_ind,:, :] = np.power(np.imag(np.multiply(data[trial_ind,:, :],
+                                (np.conj(seed)/np.abs(seed)))),2)
+                data[trial_ind, names_dict[curr_orth_elec],:] = np.power(np.abs(seed),2)
                 # seed is input electrodes. try to reverse the roles in the equation and get orthognalized seeds and
                 # save them in the data similar to laplacian.
 
@@ -176,15 +176,15 @@ def load_eeg():
     ada_classifier = AdaBoostClassifier(random_state=0)
 
     # # Get CSP features
-    # csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    # csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data, labels)
+    csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
+    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data, labels)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((hjorthMobility_features, bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((csp_features,hjorthMobility_features, bandpower_features_new, bandpower_features_rel), axis=1)
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
