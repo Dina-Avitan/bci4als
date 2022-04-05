@@ -44,9 +44,9 @@ class OnlineExperiment(Experiment):
 
     def __init__(self, eeg: EEG, model: MLModel, num_trials: int,
                  buffer_time: float, threshold: int, co_learning: bool,skip_after: Union[bool, int] = False,
-                 debug=False, mode='practice',stim_sound = False):
+                 debug=False, mode='practice',stim_sound = False,keys=(0,1,2)):
 
-        super().__init__(eeg, num_trials)
+        super().__init__(eeg, num_trials,keys)
         # experiment params
         self.experiment_type = "Online"
         self.threshold: int = threshold
@@ -67,16 +67,20 @@ class OnlineExperiment(Experiment):
                                         os.path.join(r'../src/bci4als/experiments', 'audio', f'left.mp3'),
                                         os.path.join(r'../src/bci4als/experiments', 'audio', f'idle.mp3')]
         # Model configs
-        self.labels_enum: Dict[str, int] = {'right': 0, 'left': 1, 'idle': 2}  # , 'tongue': 3, 'legs': 4}
+        self.all_labels= {0:'right',1: 'left', 2: 'idle', 3:'tongue', 4:'hands'}
+        self.labels_enum = dict([(self.all_labels[i],i)for i in keys ])
+        #self.labels_enum: Dict[str, int] = {'right': 0, 'left': 1, 'idle': 2, 'tongue': 3, 'hands': 4}
         self.label_dict: Dict[int, str] = dict([(value, key) for key, value in self.labels_enum.items()])
         self.num_labels: int = len(self.labels_enum)
-        self.batch_stack = [[],[],[]]  # number of classes is number of empty lists
+        self.batch_stack = [[] for _ in range(len(keys))]  # number of classes is number of empty lists
         self.mode = mode
         self.stim_sound = stim_sound
 
         # Hold list of lists of target-prediction pairs per trial
         # Example: [ [(0, 2), (0,3), (0,0), (0,0), (0,0) ] , [ ...] , ... ,[] ]
         self.results = []
+        # for labeling the predictions
+        self.stack_order = dict([(keys[i],i) for i in range(len(keys))])
 
     def _learning_model(self, feedback: Feedback, stim: int):
 
@@ -142,11 +146,11 @@ class OnlineExperiment(Experiment):
                     playsound.playsound(self.audio_success_path)
 
             if self.co_learning:# and prediction == stim:  # maybe prediction doesnt have to be == stim
-                self.batch_stack[stim].append(np.squeeze(epochs.get_data()))
+                self.batch_stack[self.stack_order[stim]].append(np.squeeze(epochs.get_data()))
                 if all(self.batch_stack):
                     print('co-adaptive working')
-                    data_batched = [self.batch_stack[0].pop(0), self.batch_stack[1].pop(0), self.batch_stack[2].pop(0)]
-                    self.model.partial_fit(data_batched, [0,1,2], epochs, sfreq)
+                    data_batched = [data_stack.pop(0) for data_stack in self.batch_stack]
+                    self.model.partial_fit(data_batched, self.keys, epochs, sfreq)
                     pickle.dump(self.model, open(os.path.join(self.session_directory, 'trained_model.pickle'), 'wb'))
             target_predictions.append((int(stim), int(prediction)))
 

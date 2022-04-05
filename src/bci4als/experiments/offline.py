@@ -19,9 +19,9 @@ class OfflineExperiment(Experiment):
 
     def __init__(self, eeg: EEG, num_trials: int, trial_length: float,
                  next_length: float = 1, cue_length: float = 0.25, ready_length: float = 1,
-                 full_screen: bool = False, audio: bool = False):
+                 full_screen: bool = False, audio: bool = False,keys=(0,1,2)):
 
-        super().__init__(eeg, num_trials)
+        super().__init__(eeg, num_trials,keys)
         self.experiment_type = "Offline"
         self.window_params: Dict[str, Any] = {}
         self.full_screen: bool = full_screen
@@ -41,7 +41,7 @@ class OfflineExperiment(Experiment):
             'left': os.path.join(os.path.dirname(__file__), 'images', 'arrow_left.jpeg'),
             'idle': os.path.join(os.path.dirname(__file__), 'images', 'square.jpeg'),
             'tongue': os.path.join(os.path.dirname(__file__), 'images', 'tongue.jpeg'),
-            'legs': os.path.join(os.path.dirname(__file__), 'images', 'legs.jpeg')}
+            'hands': os.path.join(os.path.dirname(__file__), 'images', 'hands.jpeg')}
         self.audio_path: Dict[str, str] = {label: os.path.join(os.path.dirname(__file__), 'audio', f'{label}.mp3')
                                            for label in self.enum_image.values()}
         self.audio_success_path = os.path.join(os.path.dirname(__file__), 'audio', f'success.mp3')
@@ -61,10 +61,10 @@ class OfflineExperiment(Experiment):
         left_stim = visual.ImageStim(main_window, image=self.images_path['left'])
         idle_stim = visual.ImageStim(main_window, image=self.images_path['idle'])
         tongue_stim = visual.ImageStim(main_window, image=self.images_path['tongue'])
-        legs_stim = visual.ImageStim(main_window, image=self.images_path['legs'])
+        hands_stim = visual.ImageStim(main_window, image=self.images_path['hands'])
 
         self.window_params = {'main_window': main_window, 'right': right_stim, 'left': left_stim,
-                              'idle': idle_stim, 'tongue': tongue_stim, 'legs': legs_stim}
+                              'idle': idle_stim, 'tongue': tongue_stim, 'hands': hands_stim}
     #
     # def _init_labels(self):
     #     """

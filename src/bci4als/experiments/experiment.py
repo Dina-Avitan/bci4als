@@ -14,7 +14,7 @@ from psychopy import event
 
 
 class Experiment:
-    def __init__(self, eeg, num_trials):
+    def __init__(self, eeg, num_trials,keys=(0,1,2)):
         self.num_trials: int = num_trials
         self.eeg: EEG = eeg
 
@@ -27,12 +27,13 @@ class Experiment:
         self.cue_length = None
         self.trial_length = None
         self.session_directory = None
-        self.enum_image = {0: 'right', 1: 'left', 2: 'idle'}#, 3: 'tongue', 4: 'legs'}
+        self.enum_image = {0: 'right', 1: 'left', 2: 'idle', 3: 'tongue', 4: 'hands'}
         self.experiment_type = None
         self.skip_after = None
 
         #     labels
         self.labels = []
+        self.keys= keys
         self._init_labels()
 
     def run(self):
@@ -143,7 +144,7 @@ class Experiment:
 
         return session_folder
 
-    def _init_labels(self, keys=(0, 1, 2)):#, 3, 4)):
+    def _init_labels(self):
         """
         This method creates dict containing a stimulus vector
         :return: the stimulus in each trial (list)
@@ -151,10 +152,10 @@ class Experiment:
 
         # keys = [3, 4] #todo: make the list of keys programmable from main scope (run experiment with limited keys)
         # Create the balance label vector
-        for i in keys:
-            self.labels += [i] * (self.num_trials // len(keys))
-        self.labels += list(np.random.choice(list(keys),
-                                             size=self.num_trials % len(keys),
+        for i in self.keys:
+            self.labels += [i] * (self.num_trials // len(self.keys))
+        self.labels += list(np.random.choice(list(self.keys),
+                                             size=self.num_trials % len(self.keys),
                                              replace=True))
 
         random.shuffle(self.labels)

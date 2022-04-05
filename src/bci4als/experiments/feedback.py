@@ -60,8 +60,8 @@ class Feedback:
             'left': os.path.join(os.path.dirname(__file__), 'images', 'arrow_left.jpeg'),
             'idle': os.path.join(os.path.dirname(__file__), 'images', 'square.jpeg'),
             'tongue': os.path.join(os.path.dirname(__file__), 'images', 'tongue.jpeg'),
-            'legs': os.path.join(os.path.dirname(__file__), 'images', 'legs.jpeg')}
-        self.enum_image = {0: 'right', 1: 'left', 2: 'idle', 3: 'tongue', 4: 'legs'}
+            'hands': os.path.join(os.path.dirname(__file__), 'images', 'hands.jpeg')}
+        self.enum_image = {0: 'right', 1: 'left', 2: 'idle', 3: 'tongue', 4: 'hands'}
 
         # Progress bars params
         self.bar: Bar = Bar(pos=(0, -0.5), line_size=(0.01, 0.4), frame_size=(1.9, 0.2),
