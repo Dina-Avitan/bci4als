@@ -42,6 +42,7 @@ from xgboost import XGBClassifier
 from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
+from scipy.signal import hilbert
 
 def load_eeg():
     def ICA_check(unfiltered_model):
@@ -92,7 +93,7 @@ def load_eeg():
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=1) > 1.8 # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1.2 # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -100,10 +101,31 @@ def load_eeg():
         labels = np.delete(labels, to_remove, axis=0)
         print(f'trials removed: {to_remove}')
         return feature_mat, labels
+    def orthogonalize_hipp(data, orthogonalized_electrodes=('C3','C4','Cz')):
+        names_dict = {'C3': 0, 'C4': 1, 'Cz': 2, 'FC1': 3, 'FC2': 4, 'FC5': 5, 'FC6': 6, 'CP1': 7, 'CP2': 8, 'CP5': 9,
+                      'CP6': 10}
+        data = hilbert(data)
+        for trial_ind in range(data.shape[0]):
+            for curr_orth_elec in orthogonalized_electrodes:
+                trial_without_curr_elec = np.delete(data[trial_ind, :, :],names_dict[curr_orth_elec], axis=0)
+                # two choices
+                # option 1 : seed is every electrode except the input electrodes. orthoganalize the data for every seed
+                # evetually get data without influence of other electrodes
+                seed = data[trial_ind,names_dict[curr_orth_elec], :]
+                everything_else = list(names_dict.values())
+                everything_else.pop(names_dict[curr_orth_elec])
+                data[trial_ind,:, :] = np.power(np.imag(np.multiply(data[trial_ind,:, :],
+                                (np.conj(seed)/np.abs(seed)))),2)
+                data[trial_ind, names_dict[curr_orth_elec],:] = np.power(np.abs(seed),2)
+                # seed is input electrodes. try to reverse the roles in the equation and get orthognalized seeds and
+                # save them in the data similar to laplacian.
 
+        return data
     fs = 125
     # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+    #bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+    bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
     # # Ofir's data
@@ -132,7 +154,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -142,24 +164,34 @@ def load_eeg():
     print(data.shape)
     # data = epochs_z_score(data)  # z score?
 
+    # SPATIAL FILTERS LETS GO
     #Laplacian
     data, _ = EEG.laplacian(data)
+    # Orthoganilization by Hipp
+    # https://doi.org/10.1016/j.neuroimage.2016.01.055
+    # data = orthogonalize_hipp(data,['FC1'])
+
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
     ada_classifier = AdaBoostClassifier(random_state=0)
-
     # # Get CSP features
-    csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-    csp_features = Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data, labels)
+    csp_features = []
+    for i in bands:
+        data_mu = mne.filter.filter_data(data,fs,i[0,0],i[0,1])
+        csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
+        csp_features.append(Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data_mu, labels))
+    csp_features = np.concatenate((csp_features),axis=1)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((hjorthMobility_features,csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((csp_features,hjorthMobility_features, bandpower_features_new, bandpower_features_rel), axis=1)
+    #bandpower_features_wtf = csp_features
+
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
@@ -219,29 +251,34 @@ def load_eeg():
     pipeline_SVM.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     mat1 = ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    ax = plt.subplot(1,5,1)
-    mat1.plot(ax=ax)
+    mat1.plot()
+    plt.show()
 
     pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     print(pipeline_RF.predict(bandpower_features_wtf[test_ind, :]))
     print(np.sum(pipeline_RF.predict(bandpower_features_wtf[test_ind, :])==np.array(labels)[test_ind])/len(np.array(labels)[test_ind]))
     mat2 = ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-    ax = plt.subplot(1,5,2)
-    mat2.plot(ax=ax)
+    mat2.plot()
+    plt.show()
 
     pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     mat3 = ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
-
+    mat3.plot()
+    plt.show()
 
     pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     mat4 = ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
+    mat4.plot()
+    plt.show()
 
     pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
     mat5 = ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
                                           np.array(labels)[test_ind])
+    mat5.plot()
+    plt.show()
 
 def get_feature_mat(model):
     def ICA_perform(model):
