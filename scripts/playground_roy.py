@@ -123,8 +123,8 @@ def load_eeg():
         return data
     fs = 125
     # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    #bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
-    bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+    bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+    # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
 
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
@@ -154,7 +154,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/94/pre_laplacian.pickle')
     #
     labels = data2.labels
 
@@ -178,18 +178,24 @@ def load_eeg():
     ada_classifier = AdaBoostClassifier(random_state=0)
     # # Get CSP features
     csp_features = []
-    for i in bands:
-        data_mu = mne.filter.filter_data(data,fs,i[0,0],i[0,1])
-        csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
-        csp_features.append(Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data_mu, labels))
-    csp_features = np.concatenate((csp_features),axis=1)
+    # by band experiment
+    # for i in bands:
+    #     data_mu = mne.filter.filter_data(data,fs,i[0,0],i[0,1])
+    #     csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power', cov_est='epoch')
+    #     csp_features.append(Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data_mu, labels))
+    # csp_features = np.concatenate((csp_features),axis=1)
+    # normal broadband
+    csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+              cov_est='epoch')
+    csp_features= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
+                                                                                                          labels)
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features,hjorthMobility_features, bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
     #bandpower_features_wtf = csp_features
 
     scaler = StandardScaler()
@@ -555,8 +561,8 @@ if __name__ == '__main__':
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    load_eeg()
+    # load_eeg()
     # plot_calssifiers(datasets)
-    # plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\89\results.json')
+    plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\98\results.json')
     # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
     #                for rec in [88]])

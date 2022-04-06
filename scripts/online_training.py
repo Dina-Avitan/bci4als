@@ -30,14 +30,15 @@ def run_experiment(model_path: str):
     eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
     # If mode= 'practice': It will skip after skip_after errors. it will skip after threshold successes
     # If mode= 'test': It will not skip. It will run skip_after times whether you succeed or fail the trial
-    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=9, buffer_time=buffer_time, threshold=3, skip_after=4,
-                           co_learning=True, debug=False, mode='test',stim_sound=False,keys=(2,3,4))
+    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=3, buffer_time=buffer_time, threshold=3, skip_after=4,
+                           co_learning=True, debug=False, mode='test',stim_sound=False,keys=(0,1,2))
 
     exp.run(use_eeg=True, full_screen=True)
+    exp.plot_online_results()
 
 if __name__ == '__main__':
 
-    model_path = r'../recordings/synthetic_board/62/pre_laplacian.pickle'
+    model_path = r'../recordings/roy/97/pre_laplacian.pickle'
     # model_path = None  # use if synthetic
     run_experiment(model_path=model_path)
 

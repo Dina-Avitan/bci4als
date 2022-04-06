@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 import mne
 import numpy as np
 import playsound
+import seaborn
+from sklearn.metrics import confusion_matrix
+
 from bci4als.eeg import EEG
 from .experiment import Experiment
 from bci4als.experiments.feedback import Feedback
@@ -148,7 +151,6 @@ class OnlineExperiment(Experiment):
             if self.co_learning:# and prediction == stim:  # maybe prediction doesnt have to be == stim
                 self.batch_stack[self.stack_order[stim]].append(np.squeeze(epochs.get_data()))
                 if all(self.batch_stack):
-                    print('co-adaptive working')
                     data_batched = [data_stack.pop(0) for data_stack in self.batch_stack]
                     self.model.partial_fit(data_batched, self.keys, epochs, sfreq)
                     pickle.dump(self.model, open(os.path.join(self.session_directory, 'trained_model.pickle'), 'wb'))
@@ -233,3 +235,40 @@ class OnlineExperiment(Experiment):
         # turn off EEG streaming
         if use_eeg:
             self.eeg.off()
+    def plot_online_results(self):
+        path = f"{self.session_directory}/results.json"
+        with open(path) as f:
+            data = json.load(f)
+        rep_on_class = len(data[0])
+        num_of_trials_class = len(data)/3
+        results_dict = {'0': 0, '1':0,'2':0}
+        expected = []
+        prediction = []
+        for trial in data:
+            for ind in trial:
+                if ind[0]==ind[1]:
+                    results_dict[str(ind[0])] += 1/(rep_on_class*num_of_trials_class)
+                expected.append(ind[0])
+                prediction.append(ind[1])
+
+        # the bar plot
+        labels = ['Right', 'Left', 'Idle']
+        classes = list(results_dict.keys())
+        values = list(results_dict.values())
+        plt.bar(classes,values,color = (0.5,0.1,0.5,0.6))
+        plt.title('Online results - The prediction percentage for each class\n')
+        plt.xlabel('Prediction percentage')
+        plt.ylabel('Classes ')
+        plt.xticks(classes,labels)
+        plt.show()
+
+        # the confusion matrix
+        cm = confusion_matrix(expected,prediction)
+        ax = seaborn.heatmap(cm/np.sum(cm),fmt='.2%', annot=True, cmap='Blues')
+        ax.set_title('Online results - confusion matrix\n')
+        ax.set_xlabel('Predicted Values')
+        ax.set_ylabel('Actual Values ')
+        ## Ticket labels - List must be in alphabetical order
+        ax.xaxis.set_ticklabels(labels)
+        ax.yaxis.set_ticklabels(labels)
+        plt.show()

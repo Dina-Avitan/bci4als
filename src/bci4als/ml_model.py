@@ -120,7 +120,8 @@ class MLModel:
         self.scaler.fit(self.features_mat)
         self.features_mat = self.scaler.transform(self.features_mat)
         # trial rejection
-        self.features_mat, self.labels = self.trials_rejection(self.features_mat, self.labels)
+        self.features_mat, self.labels, to_remove = self.trials_rejection(self.features_mat, self.labels)
+        self.epochs.drop(to_remove)
         # pick classifier
         clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
         rf_classifier = RandomForestClassifier(random_state=0)
@@ -147,7 +148,10 @@ class MLModel:
         to_remove += add_remove
         feature_mat = np.delete(feature_mat, to_remove, axis=0)
         labels = np.delete(labels, to_remove, axis=0)
-        return feature_mat, labels
+        print("trial rejected")
+        print(to_remove)
+        print("trial rejected")
+        return feature_mat, labels, to_remove
 
     def online_predict(self, data: NDArray, eeg: EEG):
         # Prepare parameters
@@ -171,6 +175,7 @@ class MLModel:
         # Append y to labels
         for label in y:
             self.labels = np.append(self.labels, label)
+
         # update self.epochs
         ch_types = ['eeg'] * len(epochs.ch_names)
         info = mne.create_info(epochs.ch_names, sfreq, ch_types)
