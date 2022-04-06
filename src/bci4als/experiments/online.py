@@ -241,7 +241,7 @@ class OnlineExperiment(Experiment):
             data = json.load(f)
         rep_on_class = len(data[0])
         num_of_trials_class = len(data)/3
-        results_dict = {'0': 0, '1':0,'2':0}
+        results_dict = dict([(str(i),0) for i in self.keys])
         expected = []
         prediction = []
         for trial in data:
@@ -252,7 +252,7 @@ class OnlineExperiment(Experiment):
                 prediction.append(ind[1])
 
         # the bar plot
-        labels = ['Right', 'Left', 'Idle']
+        labels = list(self.label_dict.values())
         classes = list(results_dict.keys())
         values = list(results_dict.values())
         plt.bar(classes,values,color = (0.5,0.1,0.5,0.6))

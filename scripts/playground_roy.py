@@ -501,12 +501,16 @@ def plot_calssifiers(datasets):
     plt.tight_layout()
     plt.savefig("High resoltion.png", dpi=300)
     plt.show()
+
 def plot_online_results(path):
     with open(path) as f:
         data = json.load(f)
+    print(data)
     rep_on_class = len(data[0])
     num_of_trials_class = len(data)/3
-    results_dict = {'2': 0, '3':0,'4':0}
+    results_dict = {}
+    for trial in data:
+        results_dict[str(trial[0][0])] = 0
     expected = []
     prediction = []
     for trial in data:
@@ -517,9 +521,12 @@ def plot_online_results(path):
             prediction.append(ind[1])
 
     # the bar plot
-    labels = ['Right', 'Left', 'Idle']
-    classes = list(results_dict.keys())
-    values = list(results_dict.values())
+    all_labels = {'0':'Right','1':'Left','2':'Idle','3':'Tongue','4':'Hands'}
+    items = list(results_dict.items())
+    items = sorted(items)
+    classes = [classes[0] for classes in items]
+    values = [values[1] for values in items]
+    labels = [all_labels[i] for i in classes]
     plt.bar(classes,values,color = (0.5,0.1,0.5,0.6))
     plt.title('Online results - The prediction percentage for each class\n')
     plt.xlabel('Prediction percentage')
