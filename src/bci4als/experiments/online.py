@@ -235,6 +235,7 @@ class OnlineExperiment(Experiment):
         # turn off EEG streaming
         if use_eeg:
             self.eeg.off()
+            
     def plot_online_results(self):
         path = f"{self.session_directory}/results.json"
         with open(path) as f:
