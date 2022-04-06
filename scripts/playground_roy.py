@@ -506,7 +506,7 @@ def plot_online_results(path):
         data = json.load(f)
     rep_on_class = len(data[0])
     num_of_trials_class = len(data)/3
-    results_dict = {'0': 0, '1':0,'2':0}
+    results_dict = {'2': 0, '3':0,'4':0}
     expected = []
     prediction = []
     for trial in data:
@@ -563,6 +563,6 @@ if __name__ == '__main__':
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # load_eeg()
     # plot_calssifiers(datasets)
-    plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\98\results.json')
+    plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_2022\12\results.json')
     # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
     #                for rec in [88]])
