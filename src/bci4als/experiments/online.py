@@ -104,6 +104,7 @@ class OnlineExperiment(Experiment):
         timer = core.Clock()
         target_predictions = []
         num_tries = 0
+        threshold_skip = 0
         while not feedback.stop:
             # increase num_tries by 1
             print(f"num tries {num_tries}")
@@ -163,16 +164,17 @@ class OnlineExperiment(Experiment):
             if self.mode == 'practice':
                 if stim == prediction:
                     num_tries = 0  # if successful, reset num_tries to 0
-                    print(num_tries)
+                    threshold_skip += 1
                 else:
                     num_tries += 1
                 # Update the feedback according the prediction
-                feedback.update(prediction, skip=(num_tries >= self.skip_after))
+                skip_bool = True if num_tries >= self.skip_after or threshold_skip >= self.threshold else False
+                feedback.update(predict_stim=prediction, skip=skip_bool, progress_criteria=self.threshold)
 
             if self.mode == 'test':
                 num_tries += 1
                 # Update the feedback according the prediction
-                feedback.update(None, skip=(num_tries >= self.skip_after))
+                feedback.update(predict_stim=prediction, skip=(num_tries >= self.skip_after), progress_criteria=self.skip_after)
 
             # Debug
             print(f'Predict: {self.label_dict[prediction]}; '
@@ -204,7 +206,7 @@ class OnlineExperiment(Experiment):
         for ind_stim, stim in enumerate(self.labels):
 
             # Init feedback instance
-            feedback = Feedback(self.win, stim, self.buffer_time, self.threshold)
+            feedback = Feedback(self.win, stim, self.buffer_time, self.skip_after)
 
             # Use different thread for online learning of the model
             threading.Thread(target=self._learning_model,
