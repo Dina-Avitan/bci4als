@@ -27,18 +27,18 @@ def run_experiment(model_path: str):
     configurations = ''.join([''.join(f"x{str(i + 1)}0{gain['6']}0110X") for i in range(8)] +
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E', 'R']] + [
                 ''.join(f"x{i}131000X") for i in ['T', 'Y', 'U', 'I']])
-    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
+    eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
     # If mode= 'practice': It will skip after skip_after errors. it will skip after threshold successes
     # If mode= 'test': It will not skip. It will run skip_after times whether you succeed or fail the trial
-    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=3, buffer_time=buffer_time, threshold=3, skip_after=4,
-                           co_learning=True, debug=False, mode='test',stim_sound=False,keys=(2,3,4))
+    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=9, buffer_time=buffer_time, threshold=3, skip_after=4,
+                           co_learning=True, debug=False, mode='test',stim_sound=False,keys=(0,1,2))
 
     exp.run(use_eeg=True, full_screen=True)
     exp.plot_online_results()
 
 if __name__ == '__main__':
 
-    model_path = r'../recordings/avi_2022/11/pre_laplacian.pickle'
+    model_path = r'../recordings/avi_2022/19/pre_laplacian.pickle'
     # model_path = None  # use if synthetic
     run_experiment(model_path=model_path)
 
