@@ -324,8 +324,8 @@ class MLModel:
         bp_per_epoch = []
         for epoch_idx in range(data.shape[0]):
             for elec_idx in range(data.shape[1]):
-                bp_per_elec.append(MLModel.hjorthMobility(np.gradient(data[epoch_idx][elec_idx][np.newaxis][np.newaxis])
-                                    ) / MLModel.hjorthMobility(data[epoch_idx][elec_idx][np.newaxis][np.newaxis]))
+                bp_per_elec.append(MLModel.hjorthMobility(np.gradient(data[epoch_idx][elec_idx])[np.newaxis][np.newaxis]
+                                    )[0] / MLModel.hjorthMobility(data[epoch_idx][elec_idx][np.newaxis][np.newaxis])[0])
             if epoch_idx == 0:
                 bp_per_epoch = bp_per_elec
             else:

@@ -123,8 +123,8 @@ def load_eeg():
         return data
     fs = 125
     # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
-    # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+    # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+    bands = np.matrix('2 4; 8 12; 18 25; 2 40')
 
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
@@ -189,17 +189,34 @@ def load_eeg():
               cov_est='epoch')
     csp_features= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
                                                                                                           labels)
+
+    ## trying csp space
+    bandpower_features_wtf = []
+    csp = CSP(n_components=3, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
+              cov_est='epoch')
+    for i in bands:
+        data_mu = mne.filter.filter_data(data,fs,i[0,0],i[0,1])
+        csp_space= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data_mu,
+                                                                                    labels)
+        hjorthMobility_features = ml_model.MLModel.hjorthMobility(csp_space)
+        hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(csp_space)
+        hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(csp_space)
+        if type(bandpower_features_wtf) is not list:
+            bandpower_features_wtf = np.concatenate((bandpower_features_wtf,hjorthMobility_features,hjorthMobility_features2,hjorthMobility_features3),axis=1)
+        else:
+            bandpower_features_wtf = np.concatenate((hjorthMobility_features,hjorthMobility_features2,hjorthMobility_features3),axis=1)
+
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-    hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
-    hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
-    hjorthMobility_features3 = ml_model.MLModel.hjorth(data)
+    # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    # hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
+    # hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(data)
 
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
-    #bandpower_features_wtf = csp_features
+    # bandpower_features_wtf = np.concatenate((hjorthMobility_features,hjorthMobility_features2,hjorthMobility_features3),axis=1)
+                                             #,csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
