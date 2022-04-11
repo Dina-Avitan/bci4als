@@ -280,6 +280,60 @@ class MLModel:
         return bp_per_epoch
 
     @staticmethod
+    # HjorthParameters
+    def hjorthActivity(data):
+        """
+        Returns the Hjorth Activity of the given data
+
+        Parameters
+        ----------
+        data: array_like
+
+        Returns
+        -------
+        float
+            The resulting value
+        """
+        bp_per_elec = []
+        bp_per_epoch = []
+        for epoch_idx in range(data.shape[0]):
+            for elec_idx in range(data.shape[1]):
+                bp_per_elec.append(np.var(data[epoch_idx][elec_idx]))
+            if epoch_idx == 0:
+                bp_per_epoch = bp_per_elec
+            else:
+                bp_per_epoch = np.vstack((bp_per_epoch, bp_per_elec))
+            bp_per_elec = []
+        return bp_per_epoch
+
+    @staticmethod
+    def hjorthComplexity(data):
+        """
+        Returns the Hjorth Complexity of the given data
+
+        Parameters
+        ----------
+        data: array_like
+
+        Returns
+        -------
+        float
+            The resulting value
+        """
+        bp_per_elec = []
+        bp_per_epoch = []
+        for epoch_idx in range(data.shape[0]):
+            for elec_idx in range(data.shape[1]):
+                bp_per_elec.append(MLModel.hjorthMobility(np.gradient(data[epoch_idx][elec_idx][np.newaxis][np.newaxis])
+                                    ) / MLModel.hjorthMobility(data[epoch_idx][elec_idx][np.newaxis][np.newaxis]))
+            if epoch_idx == 0:
+                bp_per_epoch = bp_per_elec
+            else:
+                bp_per_epoch = np.vstack((bp_per_epoch, bp_per_elec))
+            bp_per_elec = []
+        return bp_per_epoch
+
+    @staticmethod
     # Lempel-Ziv Complexity
     def LZC(data, threshold=None):
         """

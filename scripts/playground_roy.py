@@ -43,7 +43,7 @@ from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert
-
+#import eeglib.eeg #steal features
 def load_eeg():
     def ICA_check(unfiltered_model):
         """
@@ -154,7 +154,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/94/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -173,7 +173,7 @@ def load_eeg():
 
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
-    mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
+    mlp_classifier = MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=600, random_state=0)
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
     ada_classifier = AdaBoostClassifier(random_state=0)
     # # Get CSP features
@@ -193,6 +193,9 @@ def load_eeg():
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
     hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
+    hjorthMobility_features3 = ml_model.MLModel.hjorth(data)
+
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
     bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
@@ -568,8 +571,8 @@ if __name__ == '__main__':
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    # load_eeg()
+    load_eeg()
     # plot_calssifiers(datasets)
-    plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_2022\12\results.json')
+    # plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_2022\12\results.json')
     # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
     #                for rec in [88]])
