@@ -93,7 +93,7 @@ def load_eeg():
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=1) > 1.2 # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1 # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -173,9 +173,9 @@ def load_eeg():
 
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
-    mlp_classifier = MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=600, random_state=0)
+    mlp_classifier = MLPClassifier(solver='adam',learning_rate_init=0.001,hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=2000, random_state=0)
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
-    ada_classifier = AdaBoostClassifier(random_state=0)
+    ada_classifier = LinearDiscriminantAnalysis()
     # # Get CSP features
     csp_features = []
     # by band experiment
@@ -201,10 +201,13 @@ def load_eeg():
         hjorthMobility_features = ml_model.MLModel.hjorthMobility(csp_space)
         hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(csp_space)
         hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(csp_space)
+        bandpower_features_new = ml_model.MLModel.bandpower(csp_space, i, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, i, fs, window_sec=0.5, relative=True)
+        LZC_features = ml_model.MLModel.LZC(csp_space)
         if type(bandpower_features_wtf) is not list:
-            bandpower_features_wtf = np.concatenate((bandpower_features_wtf,hjorthMobility_features,hjorthMobility_features2,hjorthMobility_features3),axis=1)
+            bandpower_features_wtf = np.concatenate((LZC_features,bandpower_features_new,bandpower_features_rel,bandpower_features_wtf,hjorthMobility_features),axis=1)
         else:
-            bandpower_features_wtf = np.concatenate((hjorthMobility_features,hjorthMobility_features2,hjorthMobility_features3),axis=1)
+            bandpower_features_wtf = np.concatenate((LZC_features,bandpower_features_new,bandpower_features_rel,hjorthMobility_features),axis=1)
 
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
@@ -215,8 +218,7 @@ def load_eeg():
 
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    # bandpower_features_wtf = np.concatenate((hjorthMobility_features,hjorthMobility_features2,hjorthMobility_features3),axis=1)
-                                             #,csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
+    # bandpower_features_wtf = np.concatenate((bandpower_features_wtf,csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
