@@ -88,18 +88,19 @@ class Feedback:
                                                  size=(0, self.time_bar_frame.size[1]),
                                                  fillColor=self.time_bar.fill_color)
 
-    def update(self, predict_stim, skip: bool = False):
+    def update(self, predict_stim, progress_criteria, skip: bool = False):
         """
         Update the feedback on screen.
         The update occur according to the model prediction. If the model was right
         the progress bar get wider, otherwise it stay the same size.
         :param predict_stim: prediction of the model.
+        :param progress_criteria: what fashion the progress bar progresses.
         :param skip: optionally skip this stimulus.
         :return:
         """
         # If the model predicted right
         if predict_stim == self.stim:
-            self.progress += 1 / self.threshold
+            self.progress += 1 / progress_criteria
 
             if self.progress == 1:
                 self.confident = True

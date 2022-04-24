@@ -43,7 +43,7 @@ from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert
-
+#import eeglib.eeg #steal features
 def load_eeg():
     def ICA_check(unfiltered_model):
         """
@@ -93,7 +93,7 @@ def load_eeg():
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=1) > 1.2 # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1 # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -123,8 +123,8 @@ def load_eeg():
         return data
     fs = 125
     # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
-    # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+    # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+    bands = np.matrix('2 4; 8 12; 18 25; 2 40')
 
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
@@ -154,7 +154,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/94/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     #
     labels = data2.labels
 
@@ -173,9 +173,9 @@ def load_eeg():
 
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
-    mlp_classifier = OneVsRestClassifier(MLPClassifier(solver='adam', alpha=1e-6,hidden_layer_sizes=[80]*5,max_iter=400, random_state=0))
+    mlp_classifier = MLPClassifier(solver='adam',learning_rate_init=0.001,hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=2000, random_state=0)
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
-    ada_classifier = AdaBoostClassifier(random_state=0)
+    ada_classifier = LinearDiscriminantAnalysis()
     # # Get CSP features
     csp_features = []
     # by band experiment
@@ -189,14 +189,36 @@ def load_eeg():
               cov_est='epoch')
     csp_features= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
                                                                                                           labels)
+
+    ## trying csp space
+    bandpower_features_wtf = []
+    csp = CSP(n_components=3, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
+              cov_est='epoch')
+    for i in bands:
+        data_mu = mne.filter.filter_data(data,fs,i[0,0],i[0,1])
+        csp_space= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data_mu,
+                                                                                    labels)
+        hjorthMobility_features = ml_model.MLModel.hjorthMobility(csp_space)
+        hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(csp_space)
+        hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(csp_space)
+        bandpower_features_new = ml_model.MLModel.bandpower(csp_space, i, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, i, fs, window_sec=0.5, relative=True)
+        LZC_features = ml_model.MLModel.LZC(csp_space)
+        if type(bandpower_features_wtf) is not list:
+            bandpower_features_wtf = np.concatenate((LZC_features,bandpower_features_new,bandpower_features_rel,bandpower_features_wtf,hjorthMobility_features),axis=1)
+        else:
+            bandpower_features_wtf = np.concatenate((LZC_features,bandpower_features_new,bandpower_features_rel,hjorthMobility_features),axis=1)
+
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
     bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-    hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+    # hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
+    # hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(data)
+
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
-    #bandpower_features_wtf = csp_features
+    # bandpower_features_wtf = np.concatenate((bandpower_features_wtf,csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
@@ -568,8 +590,8 @@ if __name__ == '__main__':
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    # load_eeg()
+    load_eeg()
     # plot_calssifiers(datasets)
-    plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_2022\12\results.json')
+    # plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_2022\12\results.json')
     # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
     #                for rec in [88]])
