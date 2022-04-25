@@ -121,52 +121,51 @@ def load_eeg():
                 # save them in the data similar to laplacian.
 
         return data
-    fs = 125
+    fs = 500
     # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
-    bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+    bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+    # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
 
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
-    # # Ofir's data
-    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    # data = EEG['EEG']
-    # labels = np.ravel(trainingVec['trainingVec'].T)
-    #  # data should be trails X electrodes X samples.
-    # data = np.transpose(data, (2, 0, 1))
+    # Ofir's data
+    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    data = EEG['EEG']
+    labels = np.ravel(trainingVec['trainingVec'].T)
+     # data should be trails X electrodes X samples.
+    data = np.transpose(data, (2, 0, 1))
 
-    # final_data = []
-    #
-    # for trial in range(data.shape[0]):
-    #     # C4
-    #     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-    #                           data[trial][9]) / 4
-    #
-    #     # C4
-    #     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-    #                           data[trial][10]) / 4
-    #     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-    #     if trial == 0:
-    #         final_data = new_data[np.newaxis]
-    #     else:
-    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
-    # data = final_data
+    final_data = []
+
+    for trial in range(data.shape[0]):
+        # C4
+        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+                              data[trial][9]) / 4
+
+        # C4
+        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+                              data[trial][10]) / 4
+        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+        if trial == 0:
+            final_data = new_data[np.newaxis]
+        else:
+            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    # data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    # #
+    # labels = data2.labels
     #
-    labels = data2.labels
-
-    # Choose clean data or not
-    # data = data2.epochs.get_data()
-    data = ICA_perform(data2).get_data() # ICA
-    print(data.shape)
+    # # Choose clean data or not
+    # # data = data2.epochs.get_data()
+    # data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
 
     # SPATIAL FILTERS LETS GO
     #Laplacian
-    data, _ = EEG.laplacian(data)
+    # data, _ = EEG.laplacian(data)
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
     # data = orthogonalize_hipp(data,['FC1'])
@@ -195,19 +194,21 @@ def load_eeg():
     csp = CSP(n_components=3, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
               cov_est='epoch')
     for i in bands:
-        data_mu = mne.filter.filter_data(data,fs,i[0,0],i[0,1])
+        data_mu = mne.filter.filter_data(copy.copy(data),fs,i[0,0],i[0,1])
         csp_space= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data_mu,
                                                                                     labels)
         hjorthMobility_features = ml_model.MLModel.hjorthMobility(csp_space)
         hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(csp_space)
         hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(csp_space)
-        bandpower_features_new = ml_model.MLModel.bandpower(csp_space, i, fs, window_sec=0.5, relative=False)
-        bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, i, fs, window_sec=0.5, relative=True)
+        bandpower_features_new = ml_model.MLModel.bandpower(csp_space,np.matrix([1,100]) , fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, np.matrix([1,100]), fs, window_sec=0.5, relative=True)
         LZC_features = ml_model.MLModel.LZC(csp_space)
+        features = [hjorthMobility_features, hjorthMobility_features2]
         if type(bandpower_features_wtf) is not list:
-            bandpower_features_wtf = np.concatenate((LZC_features,bandpower_features_new,bandpower_features_rel,bandpower_features_wtf,hjorthMobility_features),axis=1)
+            features = [bandpower_features_wtf] + features
+            bandpower_features_wtf = np.concatenate(features,axis=1)
         else:
-            bandpower_features_wtf = np.concatenate((LZC_features,bandpower_features_new,bandpower_features_rel,hjorthMobility_features),axis=1)
+            bandpower_features_wtf = np.concatenate(tuple(features),axis=1)
 
     # Get rest of features
     bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
@@ -218,7 +219,7 @@ def load_eeg():
 
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    # bandpower_features_wtf = np.concatenate((bandpower_features_wtf,csp_features, bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
@@ -252,13 +253,13 @@ def load_eeg():
     pipeline_XGB = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', xgb_classifier)])
     pipeline_ADA = Pipeline([('feat_selecting', mi_select),('classify', ada_classifier)])
     # get scores with CV for each pipeline
-    scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=3, n_jobs=1)
-    scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=3, n_jobs=1)
-    scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=3, n_jobs=1)
-    scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=3, n_jobs=1)
-    scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=3, n_jobs=1)
+    scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
 
-    print(scores_mix3)
+    print(scores_mix2)
     values = [scores_mix,scores_mix2,scores_mix3,scores_mix4,scores_mix5]
     names = ['Linear SVM', 'RandomForest', 'NeuralNet','XGBC','ADA Boost']
     plt.figure(figsize=(9, 3))
