@@ -12,7 +12,6 @@ from bci4als.eeg import EEG
 from bci4als.experiments.feedback import Feedback
 from psychopy import event
 
-
 class Experiment:
     def __init__(self, eeg, num_trials,keys=(0,1,2)):
         self.num_trials: int = num_trials

@@ -396,7 +396,7 @@ def plot_online_results(path):
     ax.yaxis.set_ticklabels(labels)
     plt.show()
 
-plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\roy\57\results.json')
+plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\9\results.json')
 data = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\12\trained_model.pickle')
 trials = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\4\trials.pickle')
 # data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
