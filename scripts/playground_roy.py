@@ -93,7 +93,7 @@ def load_eeg():
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=1) > 1 # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1.2 # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -121,10 +121,16 @@ def load_eeg():
                 # save them in the data similar to laplacian.
 
         return data
+    def extract_2_labels(data, labels, classes_to_extract):
+        data_2_extract = [data[ind] for ind, label in enumerate(labels) if (classes_to_extract[0] == labels[ind]
+                                                                           or classes_to_extract[1] == labels[ind])]
+        labels_2_extract = [label for ind, label in enumerate(labels) if (classes_to_extract[0] == labels[ind]
+                                                                           or classes_to_extract[1] == labels[ind])]
+        return np.reshape(data_2_extract,[len(data_2_extract)] + list(data_2_extract[0].shape)), np.ravel(labels_2_extract)
     fs = 125
-    # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
-    bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+    # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
 
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
@@ -154,18 +160,18 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/99/pre_laplacian.pickle')
     #
     labels = data2.labels
 
     # # Choose clean data or not
     data = data2.epochs.get_data()
-    data = ICA_perform(data2).get_data() # ICA
+    # data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
-
     # SPATIAL FILTERS LETS GO
     #Laplacian
     data, _ = EEG.laplacian(data)
+    # data, labels = extract_2_labels(data, labels, [0, 2])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
     # data = orthogonalize_hipp(data,['FC1'])
@@ -175,7 +181,7 @@ def load_eeg():
     mlp_classifier = MLPClassifier(solver='adam',hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=400, random_state=0)
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
     # ada_classifier = LinearDiscriminantAnalysis()
-    ada_classifier = gbm.LGBMClassifier(learning_rate=0.09,max_depth=-5,random_state=0)
+    ada_classifier = gbm.LGBMClassifier(random_state=0)
     # # Get CSP features
     csp_features = []
     # by band experiment
@@ -192,7 +198,7 @@ def load_eeg():
 
     ## trying csp space
     bandpower_features_wtf = []
-    csp = CSP(n_components=3, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
+    csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
               cov_est='epoch')
     for i in bands:
         data_mu = mne.filter.filter_data(copy.copy(data),fs,i[0,0],i[0,1])
@@ -204,7 +210,7 @@ def load_eeg():
         bandpower_features_new = ml_model.MLModel.bandpower(csp_space,np.matrix([1,100]) , fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, np.matrix([1,100]), fs, window_sec=0.5, relative=True)
         LZC_features = ml_model.MLModel.LZC(csp_space)
-        features = [hjorthMobility_features, hjorthMobility_features2,hjorthMobility_features3,bandpower_features_new,bandpower_features_rel,LZC_features]
+        features = [hjorthMobility_features, hjorthMobility_features2,hjorthMobility_features3,LZC_features]
         if type(bandpower_features_wtf) is not list:
             features = [bandpower_features_wtf] + features
             bandpower_features_wtf = np.concatenate(features,axis=1)
@@ -220,7 +226,7 @@ def load_eeg():
 
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((bandpower_features_wtf,bandpower_features_new, bandpower_features_rel), axis=1)
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
@@ -231,7 +237,7 @@ def load_eeg():
     # seperate the data before feature selection
     indices = np.arange(bandpower_features_wtf.shape[0])
     X_train, X_test, y_train, y_test, train_ind, test_ind = train_test_split(bandpower_features_wtf,
-                                labels,indices, random_state=4)
+                                labels,indices, random_state=0)
 
     # Define selection algorithms
     rf_select = SelectFromModel(estimator=ExtraTreesClassifier(n_estimators=800,random_state=0))
