@@ -1,5 +1,7 @@
 import os
+import sys
 import time
+import tkinter
 from collections import namedtuple
 from typing import Dict
 from psychopy import visual

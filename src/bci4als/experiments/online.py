@@ -6,6 +6,9 @@ import random
 import sys
 import threading
 import time
+import tkinter
+from tkinter import messagebox
+from tkinter.filedialog import askopenfile
 from typing import Dict, Union
 import matplotlib
 import matplotlib.pyplot as plt
@@ -84,6 +87,25 @@ class OnlineExperiment(Experiment):
         self.results = []
         # for labeling the predictions
         self.stack_order = dict([(keys[i],i) for i in range(len(keys))])
+
+    @staticmethod
+    def ask_model_directory():
+        """
+        init the current subject directory
+        :return: the subject directory
+        """
+
+        # get the CurrentStudy recording directory
+        if not messagebox.askokcancel(title='bci4als - Online training',
+                                      message="Select trained model path"):
+            sys.exit(-1)
+
+        # show an "Open" dialog box and return the path to the selected file
+        model_path = askopenfile().name
+        tkinter._default_root.destroy()
+        if not model_path:
+            sys.exit(-1)
+        return model_path
 
     def _learning_model(self, feedback: Feedback, stim: int):
 
@@ -275,3 +297,4 @@ class OnlineExperiment(Experiment):
         ax.xaxis.set_ticklabels(labels)
         ax.yaxis.set_ticklabels(labels)
         plt.show()
+        sys.exit(0)
