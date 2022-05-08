@@ -3,7 +3,7 @@
 import copy
 import math
 from tkinter import filedialog, Tk
-
+import lightgbm as gbm
 import mne
 import scipy.io
 import seaborn
@@ -121,60 +121,61 @@ def load_eeg():
                 # save them in the data similar to laplacian.
 
         return data
-    fs = 500
+    fs = 125
     # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
-    # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+    # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+    bands = np.matrix('2 4; 8 12; 18 25; 2 40')
 
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
 
-    # Ofir's data
-    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    data = EEG['EEG']
-    labels = np.ravel(trainingVec['trainingVec'].T)
-     # data should be trails X electrodes X samples.
-    data = np.transpose(data, (2, 0, 1))
-
-    final_data = []
-
-    for trial in range(data.shape[0]):
-        # C4
-        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-                              data[trial][9]) / 4
-
-        # C4
-        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-                              data[trial][10]) / 4
-        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-        if trial == 0:
-            final_data = new_data[np.newaxis]
-        else:
-            final_data = np.vstack((final_data, new_data[np.newaxis]))
-    data = final_data
+    # # Ofir's data
+    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    # data = EEG['EEG']
+    # labels = np.ravel(trainingVec['trainingVec'].T)
+    #  # data should be trails X electrodes X samples.
+    # data = np.transpose(data, (2, 0, 1))
+    #
+    # final_data = []
+    #
+    # for trial in range(data.shape[0]):
+    #     # C4
+    #     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+    #                           data[trial][9]) / 4
+    #
+    #     # C4
+    #     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+    #                           data[trial][10]) / 4
+    #     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+    #     if trial == 0:
+    #         final_data = new_data[np.newaxis]
+    #     else:
+    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
+    # data = final_data
 
     # Our data
-    # data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
-    # #
-    # labels = data2.labels
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     #
+    labels = data2.labels
+
     # # Choose clean data or not
-    # # data = data2.epochs.get_data()
-    # data = ICA_perform(data2).get_data() # ICA
+    data = data2.epochs.get_data()
+    data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
 
     # SPATIAL FILTERS LETS GO
     #Laplacian
-    # data, _ = EEG.laplacian(data)
+    data, _ = EEG.laplacian(data)
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
     # data = orthogonalize_hipp(data,['FC1'])
 
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
-    mlp_classifier = MLPClassifier(solver='adam',learning_rate_init=0.001,hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=2000, random_state=0)
+    mlp_classifier = MLPClassifier(solver='adam',hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=400, random_state=0)
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
-    ada_classifier = LinearDiscriminantAnalysis()
+    # ada_classifier = LinearDiscriminantAnalysis()
+    ada_classifier = gbm.LGBMClassifier(learning_rate=0.09,max_depth=-5,random_state=0)
     # # Get CSP features
     csp_features = []
     # by band experiment
@@ -203,7 +204,7 @@ def load_eeg():
         bandpower_features_new = ml_model.MLModel.bandpower(csp_space,np.matrix([1,100]) , fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, np.matrix([1,100]), fs, window_sec=0.5, relative=True)
         LZC_features = ml_model.MLModel.LZC(csp_space)
-        features = [hjorthMobility_features, hjorthMobility_features2]
+        features = [hjorthMobility_features, hjorthMobility_features2,hjorthMobility_features3,bandpower_features_new,bandpower_features_rel,LZC_features]
         if type(bandpower_features_wtf) is not list:
             features = [bandpower_features_wtf] + features
             bandpower_features_wtf = np.concatenate(features,axis=1)
@@ -248,10 +249,10 @@ def load_eeg():
     seq_select_ADA = SequentialFeatureSelector(ada_classifier, n_features_to_select=int(math.sqrt(X_train.shape[0])), n_jobs=1)
 
     pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
-    pipeline_RF = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', rf_classifier)])
+    pipeline_RF = Pipeline([('classify', rf_classifier)])
     pipeline_MLP = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', mlp_classifier)])
-    pipeline_XGB = Pipeline([('lasso', model),('feat_selecting', mi_select), ('classify', xgb_classifier)])
-    pipeline_ADA = Pipeline([('feat_selecting', mi_select),('classify', ada_classifier)])
+    pipeline_XGB = Pipeline([('classify', xgb_classifier)])
+    pipeline_ADA = Pipeline([('classify', ada_classifier)])
     # get scores with CV for each pipeline
     scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
