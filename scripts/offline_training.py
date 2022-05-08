@@ -17,8 +17,8 @@ def offline_experiment():
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E']] + [
                 ''.join(f"x{i}131000X") for i in ['R', 'T', 'Y', 'U', 'I']])
 
-    eeg = EEG(board_id=CYTON_DAISY, config_json_converted=configurations)
-    exp = OfflineExperiment(eeg=eeg, num_trials=20, trial_length=4, full_screen=True, audio=False,keys=(0,3))
+    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
+    exp = OfflineExperiment(eeg=eeg, num_trials=10, trial_length=2, full_screen=True, audio=False,keys=(0,3))
     channel_removed = []
     trials, labels = exp.run()
     session_directory = exp.session_directory

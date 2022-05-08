@@ -200,7 +200,7 @@ class OfflineExperiment(Experiment):
     def run(self):
         # Init the current experiment folder
         self.subject_directory = self._ask_subject_directory()
-        self.session_directory = self.create_session_folder(self.subject_directory)
+        self.session_directory = self.create_session_folder(self.subject_directory,experiment_type=self.experiment_type)
 
         # Create experiment's metadata
         self.write_metadata()

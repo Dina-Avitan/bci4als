@@ -58,7 +58,8 @@ class Experiment:
             file.write(f'Num of trials: {self.num_trials}\n')
             file.write(f'Trials length: {self.trial_length}\n')
             file.write(f'Cue length: {self.cue_length}\n')
-            file.write(f'Labels Enum: {self.enum_image}\n')
+            curr_keys = ','.join([self.enum_image[i] for i in self.keys])
+            file.write(f'Labels: {curr_keys}\n')
             file.write(f'Skip After: {self.skip_after}\n')
 
     def _ask_subject_directory(self):
