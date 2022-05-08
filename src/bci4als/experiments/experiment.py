@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory
-
+from datetime import date
 import brainflow
 import numpy as np
 

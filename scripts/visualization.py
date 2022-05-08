@@ -414,3 +414,38 @@ mne.viz.set_browser_backend('qt')
 
 features_mat, class_lables, features_lables = get_feature_mat(data2)
 histo_histo(features_mat, class_lables, features_lables)
+
+"""
+from datetime import date
+        today = date.today()
+        today = today.strftime("%d/%m/%Y")
+        session_folder = os.path.join(subject_folder,today)
+"""
+@staticmethod
+    def create_session_folder(subject_folder: str) -> str:
+        """
+        The method create new folder for the current session. The folder will be at the given subject
+        folder.
+        The method also creating a metadata file and locate it inside the session folder
+        :param subject_folder: path to the subject folder
+        :return: session folder path
+        """
+
+        current_sessions = []
+        for f in os.listdir(subject_folder):
+
+            # try to convert the current sessions folder to int
+            # and except if one of the sessions folder is not integer
+            try:
+                current_sessions.append(int(f))
+
+            except ValueError:
+                continue
+
+        # Create the new session folder
+        session = (max(current_sessions) + 1) if len(current_sessions) > 0 else 1
+        session_folder = os.path.join(subject_folder, str(session))
+        os.mkdir(session_folder)
+
+        return session_folder
+r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022

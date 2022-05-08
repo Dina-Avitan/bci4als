@@ -249,7 +249,6 @@ class MLModel:
                     feature_mat = np.concatenate((feature_mat, bp_per_epoch), axis=0)
                 else:
                     feature_mat = np.concatenate((feature_mat, bp_per_epoch), axis=1)
-            bp_per_epoch = []
 
         return feature_mat
 
