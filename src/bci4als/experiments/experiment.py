@@ -4,7 +4,6 @@ import sys
 from datetime import datetime
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory
-from datetime import date
 import brainflow
 import numpy as np
 
@@ -116,32 +115,41 @@ class Experiment:
             return None
 
     @staticmethod
-    def create_session_folder(subject_folder: str) -> str:
-        """
-        The method create new folder for the current session. The folder will be at the given subject
-        folder.
-        The method also creating a metadata file and locate it inside the session folder
-        :param subject_folder: path to the subject folder
-        :return: session folder path
-        """
-
-        current_sessions = []
-        for f in os.listdir(subject_folder):
-
-            # try to convert the current sessions folder to int
-            # and except if one of the sessions folder is not integer
-            try:
-                current_sessions.append(int(f))
-
-            except ValueError:
-                continue
-
-        # Create the new session folder
-        session = (max(current_sessions) + 1) if len(current_sessions) > 0 else 1
-        session_folder = os.path.join(subject_folder, str(session))
+    def create_session_folder(subject_folder: str, experiment_type=None):
+        x = datetime.now()
+        date = x.strftime("%d_%m_%y-%H_%M_%S")
+        name = experiment_type +'_'+ date
+        session_folder = os.path.join(subject_folder, name)
         os.mkdir(session_folder)
-
         return session_folder
+        #Create the new session folder
+    #def create_session_folder(subject_folder: str) -> str:
+    #
+    #     """
+    #     The method create new folder for the current session. The folder will be at the given subject
+    #     folder.
+    #     The method also creating a metadata file and locate it inside the session folder
+    #     :param subject_folder: path to the subject folder
+    #     :return: session folder path
+    #     """
+    #
+    #     current_sessions = []
+    #     for f in os.listdir(subject_folder):
+    #
+    #         # try to convert the current sessions folder to int
+    #         # and except if one of the sessions folder is not integer
+    #         try:
+    #             current_sessions.append(int(f))
+    #
+    #         except ValueError:
+    #             continue
+    #
+    #     # Create the new session folder
+    #     session = (max(current_sessions) + 1) if len(current_sessions) > 0 else 1
+    #     session_folder = os.path.join(subject_folder, str(session))
+    #     os.mkdir(session_folder)
+    #
+    #     return session_folder
 
     def _init_labels(self):
         """
