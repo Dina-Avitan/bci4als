@@ -3,11 +3,9 @@
 import copy
 import math
 from tkinter import filedialog, Tk
-import lightgbm as gbm
 import mne
 import scipy.io
 import seaborn
-import sktime.classification.interval_based
 from matplotlib.colors import ListedColormap
 import json
 from sklearn.datasets import make_classification, make_moons, make_circles
@@ -160,7 +158,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/99/pre_laplacian.pickle')
+    data2 = pd.read_pickle(r'..\\recordings\\avi_2022\\15\\trained_model.pickle')
     #
     labels = data2.labels
 
@@ -171,7 +169,7 @@ def load_eeg():
     # SPATIAL FILTERS LETS GO
     #Laplacian
     data, _ = EEG.laplacian(data)
-    # data, labels = extract_2_labels(data, labels, [0, 2])
+    data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
     # data = orthogonalize_hipp(data,['FC1'])
@@ -181,7 +179,7 @@ def load_eeg():
     mlp_classifier = MLPClassifier(solver='adam',hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=400, random_state=0)
     xgb_classifier = OneVsRestClassifier(XGBClassifier())
     # ada_classifier = LinearDiscriminantAnalysis()
-    ada_classifier = gbm.LGBMClassifier(random_state=0)
+    ada_classifier = LinearDiscriminantAnalysis()
     # # Get CSP features
     csp_features = []
     # by band experiment
@@ -265,7 +263,7 @@ def load_eeg():
     scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-
+    # print(data.shape)
     print(scores_mix2)
     values = [scores_mix,scores_mix2,scores_mix3,scores_mix4,scores_mix5]
     names = ['Linear SVM', 'RandomForest', 'NeuralNet','XGBC','ADA Boost']
