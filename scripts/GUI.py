@@ -76,7 +76,7 @@ def set_experiment_type(type):
         return 'online'
 
 def set_folder_path(name):
-    path = r'C:\Users\pc\Desktop\bci4als\recordings'
+    path = r'..\recordings'
     if name == "right_left_idle":
         path = path+'\\'+'avi_'+name
         return path
