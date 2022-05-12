@@ -6,8 +6,8 @@ def main():
 
     clock = pygame.time.Clock()
 
-
-    screen = pygame.display.set_mode((700, 500))
+    screen_size = (700, 500)
+    screen = pygame.display.set_mode(screen_size)
     screen.fill((223,207,229))
     # path = 'C:\\Users\\ellah\\PycharmProjects\\Nitzanim\\Nitzagram\\Images\\mountain.jpg'
     # img = pygame.image.load(path)
@@ -27,6 +27,7 @@ def main():
     type = 0
     path = 0
     button_run = 0
+    gui_keys = 0
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -44,13 +45,16 @@ def main():
                 if mouse_in_button(button_right_left,click_pose):
                     name = 'right_left_idle'
                     path= set_folder_path(name)
+                    gui_keys = (0,1,2)
 
                 if mouse_in_button(button_tongue_hands,click_pose):
                     name = 'tongue_hands_idle'
                     path = set_folder_path(name)
+                    gui_keys = (2,3,4)
+
                 if button_run:
                     if mouse_in_button(button_run,click_pose):
-                        return type, path
+                        return type, path, gui_keys
 
         if type and path:
             button_run = Button((300, 400), 50, 100)

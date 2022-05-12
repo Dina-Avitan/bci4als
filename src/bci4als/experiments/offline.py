@@ -17,10 +17,11 @@ from psychopy import visual
 
 class OfflineExperiment(Experiment):
 
-    def __init__(self, eeg: EEG, num_trials: int, trial_length: float,
+    def __init__(self, eeg: EEG, num_trials: int, trial_length: float,gui_folder_path,gui_keys,
                  next_length: float = 1, cue_length: float = 0.25, ready_length: float = 1,
                  full_screen: bool = False, audio: bool = False,keys=(0,1,2)):
-
+        if gui_keys:
+            keys = gui_keys
         super().__init__(eeg, num_trials,keys)
         self.experiment_type = "Offline"
         self.window_params: Dict[str, Any] = {}
@@ -34,6 +35,7 @@ class OfflineExperiment(Experiment):
         self.trial_length: float = trial_length
 
         # paths
+        self.gui_folder_path = gui_folder_path
         self.subject_directory: str = ''
         self.session_directory: str = ''
         self.images_path: Dict[str, str] = {
@@ -199,7 +201,10 @@ class OfflineExperiment(Experiment):
 
     def run(self):
         # Init the current experiment folder
-        self.subject_directory = self._ask_subject_directory()
+        if self.gui_folder_path:
+            self.subject_directory= self.gui_folder_path
+        else:
+            self.subject_directory = self._ask_subject_directory()
         self.session_directory = self.create_session_folder(self.subject_directory,experiment_type=self.experiment_type)
 
         # Create experiment's metadata
