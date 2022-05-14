@@ -45,15 +45,15 @@ class MLModel:
         self.labels: List[int] = labels
         self.channel_removed: List[str] = channel_removed
         self.debug = True
-        self.clf = RandomForestClassifier(random_state=0)  # maybe make more dynamic to user
+        self.clf = RandomForestClassifier()  # maybe make more dynamic to user
         self.features_mat = None
         self.epochs = None
         self.raw_trials = None
         self.select_features = None
         self.scaler = StandardScaler()
         self.ica = ICA(n_components=11, max_iter='auto', random_state=97)
-        self.csp_space = None
-
+        self.csp_space = []
+        self.bands = []
 
     def offline_training(self, model_type: str = 'csp_lda'):
 
@@ -95,25 +95,46 @@ class MLModel:
         This function will re-learn the model's feature mat and clf object which represents the model itself
         """
 
-        # Extract spectral features
+        # Set parameters
         data = copy.deepcopy(self.epochs)
-        bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+        self.bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+        self.bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35') # new
         fs = self.epochs.info['sfreq']
         #Apply ICA
         data = self.ica.apply(data).get_data()
         # Laplacian
         data, _ = EEG.laplacian(data)
-        # Get features
-        bandpower_features = self.bandpower(data, bands, fs, window_sec=0.5, relative=False)
-        bandpower_features_rel = self.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-
-        # Get CSP features
-        csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+        # # Get CSP features
+        # csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+        #           cov_est='epoch')
+        # self.csp_space = Pipeline(
+        #     [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
+        #
+        # csp_features = self.csp_space.transform(data)
+        # new csp
+        csp_features = []
+        csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
                   cov_est='epoch')
-        self.csp_space = Pipeline(
-            [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
+        for ind, i in enumerate(self.bands):
+            data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
+            self.csp_space.append(Pipeline(
+                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data_mu, self.labels))
+            curr_space = self.csp_space[ind].transform(data_mu)
+            hjorthMobility_features = self.hjorthMobility(curr_space)
+            hjorthMobility_features2 = self.hjorthActivity(curr_space)
+            hjorthMobility_features3 = self.hjorthComplexity(curr_space)
+            LZC_features = self.LZC(curr_space)
+            features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
+            if type(csp_features) is not list:
+                features = [csp_features] + features
+                csp_features = np.concatenate(features, axis=1)
+            else:
+                csp_features = np.concatenate(tuple(features), axis=1)
 
-        csp_features = self.csp_space.transform(data)
+        # Extract spectral features
+        # Get features
+        bandpower_features = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=True)
 
         self.features_mat = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=1)
         # Normalize
@@ -124,14 +145,14 @@ class MLModel:
         self.epochs.drop(to_remove)
         # pick classifier
         clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
-        rf_classifier = RandomForestClassifier(random_state=0)
+        rf_classifier = RandomForestClassifier()
         # Prepare Pipeline
         mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(self.features_mat.shape[0])))
         model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
         seq_select_clf = SequentialFeatureSelector(clf, n_features_to_select=int(math.sqrt(self.features_mat.shape[0])), n_jobs=1)
         # Select pipeline
         pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
-        pipeline_RF = Pipeline([('lasso', model), ('feat_selecting', mi_select), ('classify', rf_classifier)])
+        pipeline_RF = Pipeline([('classify', rf_classifier)])
         # Initiate Pipeline for online classification
         self.clf = pipeline_RF.fit(self.features_mat, self.labels)
 
@@ -142,7 +163,7 @@ class MLModel:
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=1) > 1.5  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1.2  # remove features with extreme values - 2 std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -155,12 +176,29 @@ class MLModel:
 
     def online_predict(self, data: NDArray, eeg: EEG):
         # Prepare parameters
-        bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+        # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
         fs = eeg.sfreq
         # Get features
-        csp_features = self.csp_space.transform(data[np.newaxis])[0]
-        bandpower_features = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=False)
-        bandpower_features_rel = self.bandpower(data[np.newaxis], bands, fs, window_sec=0.5, relative=True)
+        # csp_features = self.csp_space.transform(data[np.newaxis])[0] old
+        # new csp
+        csp_features = []
+        for ind, i in enumerate(self.bands):
+            data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
+            curr_space = self.csp_space[ind].transform(data_mu[np.newaxis])
+            hjorthMobility_features = self.hjorthMobility(curr_space)
+            hjorthMobility_features2 = self.hjorthActivity(curr_space)
+            hjorthMobility_features3 = self.hjorthComplexity(curr_space)
+            LZC_features = self.LZC(curr_space)
+            features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
+            if type(csp_features) is not list:
+                csp_features = np.concatenate([csp_features, np.concatenate(tuple(features), axis=0)],axis=0)
+            else:
+
+                csp_features = np.concatenate(tuple(features), axis=0)
+        print(csp_features.shape)
+        #Spectral features
+        bandpower_features = self.bandpower(data[np.newaxis], self.bands, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = self.bandpower(data[np.newaxis], self.bands, fs, window_sec=0.5, relative=True)
         # combine features
         features_mat_test = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=0)
         # Normalize

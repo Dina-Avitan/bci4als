@@ -158,13 +158,13 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'..\\recordings\\avi_2022\\15\\trained_model.pickle')
+    data2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\Online_14_05_22-20_21_02\trained_model.pickle')
     #
     labels = data2.labels
 
     # # Choose clean data or not
     data = data2.epochs.get_data()
-    # data = ICA_perform(data2).get_data() # ICA
+    data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
     # SPATIAL FILTERS LETS GO
     #Laplacian
