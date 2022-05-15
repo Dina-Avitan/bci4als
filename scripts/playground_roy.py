@@ -1,6 +1,7 @@
 # This script is meant to load models and allow the user to change hyper-parameters
 # so you could fine-tune the real offline_training class
 import copy
+import lightgbm as lgb
 import math
 from tkinter import filedialog, Tk
 import mne
@@ -32,7 +33,7 @@ from sklearn.tree import DecisionTreeClassifier
 from mne.decoding import UnsupervisedSpatialFilter
 from bci4als import ml_model, EEG
 from sklearn import svm, manifold
-from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
+from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold, cross_val_predict
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -42,7 +43,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert
 #import eeglib.eeg #steal features
-def load_eeg():
+def load_eeg(path):
     def ICA_check(unfiltered_model):
         """
         This function is for visualization the ICA process and for choosing coordinates to exclude
@@ -125,6 +126,45 @@ def load_eeg():
         labels_2_extract = [label for ind, label in enumerate(labels) if (classes_to_extract[0] == labels[ind]
                                                                            or classes_to_extract[1] == labels[ind])]
         return np.reshape(data_2_extract,[len(data_2_extract)] + list(data_2_extract[0].shape)), np.ravel(labels_2_extract)
+    def band_hunter(data, labels):
+        rf_classifier = RandomForestClassifier(random_state=0)
+        epochs = 0
+        fs = 125
+        max_pred = 0
+        winning_band = []
+        lower = 2
+        upper = 40
+        band_number = 7
+        delta = 5
+        while epochs <= 50:
+            band_range = np.round(np.linspace(lower, upper, band_number),2)
+            bands = np.matrix(';'.join([str(i) + ' ' + str(i + delta) for i in band_range]))
+            pipeline_RF = Pipeline([('classify', rf_classifier)])
+            # Get rest of features
+            bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+            bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+            features = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
+            scaler = StandardScaler()
+            scaler.fit(features)
+            features = scaler.transform(features)
+            # Trial rejection
+            features, labels_curr = features, labels # trials_rejection(features, labels)
+            scores_mix = np.mean(cross_val_score(pipeline_RF, features, labels_curr, cv=3, n_jobs=1)) * 100
+            if max_pred < scores_mix:
+                max_pred = scores_mix
+                winning_band = bands
+                band_number = band_number * 2
+                delta = np.linspace(lower, upper, band_number)[1] - np.linspace(lower, upper, band_number)[0]
+            else:
+                lower = np.random.randint(1, 40)
+                upper = 40 if lower+7 >= 40 else np.random.randint(lower+7, 40)
+                band_number = 7
+                delta = np.linspace(lower, upper, band_number)[1] - np.linspace(lower, upper, band_number)[0]
+            delta = delta if delta > 2 else 2
+            epochs += 1
+        print(max_pred)
+        return max_pred, winning_band
+
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
@@ -158,7 +198,7 @@ def load_eeg():
     # data = final_data
 
     # Our data
-    data2 = pd.read_pickle(r'..\\recordings\\avi_2022\\15\\trained_model.pickle')
+    data2 = pd.read_pickle(path)
     #
     labels = data2.labels
 
@@ -169,7 +209,9 @@ def load_eeg():
     # SPATIAL FILTERS LETS GO
     #Laplacian
     data, _ = EEG.laplacian(data)
-    data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
+    pred, bands = band_hunter(data, labels)
+    print(bands)
+    # data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
     # data = orthogonalize_hipp(data,['FC1'])
@@ -177,9 +219,9 @@ def load_eeg():
     # Initiate classifiers
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = MLPClassifier(solver='adam',hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=400, random_state=0)
-    xgb_classifier = OneVsRestClassifier(XGBClassifier())
+    xgb_classifier = XGBClassifier()
     # ada_classifier = LinearDiscriminantAnalysis()
-    ada_classifier = LinearDiscriminantAnalysis()
+    ada_classifier = lgb.LGBMClassifier()
     # # Get CSP features
     csp_features = []
     # by band experiment
@@ -208,7 +250,7 @@ def load_eeg():
         bandpower_features_new = ml_model.MLModel.bandpower(csp_space,np.matrix([1,100]) , fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, np.matrix([1,100]), fs, window_sec=0.5, relative=True)
         LZC_features = ml_model.MLModel.LZC(csp_space)
-        features = [hjorthMobility_features, hjorthMobility_features2,hjorthMobility_features3,LZC_features]
+        features = [hjorthMobility_features, hjorthMobility_features2]
         if type(bandpower_features_wtf) is not list:
             features = [bandpower_features_wtf] + features
             bandpower_features_wtf = np.concatenate(features,axis=1)
@@ -224,7 +266,7 @@ def load_eeg():
 
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((bandpower_features_wtf,bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((bandpower_features_wtf, bandpower_features_new, bandpower_features_rel), axis=1)
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
@@ -259,10 +301,15 @@ def load_eeg():
     pipeline_ADA = Pipeline([('classify', ada_classifier)])
     # get scores with CV for each pipeline
     scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix_pred = cross_val_predict(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix_pred2 = cross_val_predict(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix_pred3 = cross_val_predict(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix_pred4 = cross_val_predict(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix_pred5 = cross_val_predict(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     # print(data.shape)
     print(scores_mix2)
     values = [scores_mix,scores_mix2,scores_mix3,scores_mix4,scores_mix5]
@@ -282,36 +329,26 @@ def load_eeg():
     (print(f"ADA rate is: {np.mean(scores_mix5)*100}%"))
 
     # fit pipelines for the confusion matrix and get matrices
-    pipeline_SVM.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    mat1 = ConfusionMatrixDisplay.from_estimator(pipeline_SVM, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind])
-    mat1.plot()
+    mat1 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred,
+                            normalize='all')
+    plt.suptitle('SVM Confusion matrix')
     plt.show()
 
-    pipeline_RF.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    print(pipeline_RF.predict(bandpower_features_wtf[test_ind, :]))
-    print(np.sum(pipeline_RF.predict(bandpower_features_wtf[test_ind, :])==np.array(labels)[test_ind])/len(np.array(labels)[test_ind]))
-    mat2 = ConfusionMatrixDisplay.from_estimator(pipeline_RF, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind])
-    mat2.plot()
+    mat2 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred2,
+                            normalize='all')
+    plt.suptitle('RandomForest Confusion matrix')
     plt.show()
-
-    pipeline_MLP.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    mat3 = ConfusionMatrixDisplay.from_estimator(pipeline_MLP, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind])
-    mat3.plot()
+    mat3 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred3,
+                            normalize='all')
+    plt.suptitle('MLP Confusion matrix')
     plt.show()
-
-    pipeline_XGB.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    mat4 = ConfusionMatrixDisplay.from_estimator(pipeline_XGB, bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind])
-    mat4.plot()
+    mat4 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred4,
+                            normalize='all')
+    plt.suptitle('XGB Confusion matrix')
     plt.show()
-
-    pipeline_ADA.fit(bandpower_features_wtf[train_ind, :], np.array(labels)[train_ind])
-    mat5 = ConfusionMatrixDisplay.from_estimator(pipeline_ADA,bandpower_features_wtf[test_ind, :],
-                                          np.array(labels)[test_ind])
-    mat5.plot()
+    mat5 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred5,
+                            normalize='all')
+    plt.suptitle('LightGBM Confusion matrix')
     plt.show()
 
 def get_feature_mat(model):
@@ -533,7 +570,6 @@ def plot_calssifiers(datasets):
 def plot_online_results(path):
     with open(path) as f:
         data = json.load(f)
-    print(data)
     rep_on_class = len(data[0])
     num_of_trials_class = len(data)/3
     results_dict = {}
@@ -591,13 +627,15 @@ def over_time_pred(recording_paths):
     plt.show()
 
 if __name__ == '__main__':
+    path = r'../recordings/avi_right_left_idle/Online_12_05_22-15_29_15'
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    load_eeg()
+    load_eeg(path+'/trained_model.pickle')
     # plot_calssifiers(datasets)
-    # plot_online_results(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_2022\12\results.json')
+    import matplotlib.pyplot as plt
+    plot_online_results(path+'/results.json')
     # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
     #                for rec in [88]])
