@@ -97,7 +97,7 @@ class MLModel:
 
         # Set parameters
         data = copy.deepcopy(self.epochs)
-        self.bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
+        # self.bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
         self.bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35') # new
         fs = self.epochs.info['sfreq']
         #Apply ICA
