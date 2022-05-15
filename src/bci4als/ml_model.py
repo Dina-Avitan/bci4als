@@ -105,31 +105,31 @@ class MLModel:
         # Laplacian
         data, _ = EEG.laplacian(data)
         # # Get CSP features
-        # csp = CSP(n_components=4, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
-        #           cov_est='epoch')
-        # self.csp_space = Pipeline(
-        #     [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
-        #
-        # csp_features = self.csp_space.transform(data)
-        # new csp
-        csp_features = []
-        csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
+        csp = CSP(n_components=2, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
-        for ind, i in enumerate(self.bands):
-            data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
-            self.csp_space.append(Pipeline(
-                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data_mu, self.labels))
-            curr_space = self.csp_space[ind].transform(data_mu)
-            hjorthMobility_features = self.hjorthMobility(curr_space)
-            hjorthMobility_features2 = self.hjorthActivity(curr_space)
-            hjorthMobility_features3 = self.hjorthComplexity(curr_space)
-            LZC_features = self.LZC(curr_space)
-            features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
-            if type(csp_features) is not list:
-                features = [csp_features] + features
-                csp_features = np.concatenate(features, axis=1)
-            else:
-                csp_features = np.concatenate(tuple(features), axis=1)
+        self.csp_space = Pipeline(
+            [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
+
+        csp_features = self.csp_space.transform(data)
+        # new csp
+        # csp_features = []
+        # csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
+        #           cov_est='epoch')
+        # for ind, i in enumerate(self.bands):
+        #     data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
+        #     self.csp_space.append(Pipeline(
+        #         [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data_mu, self.labels))
+        #     curr_space = self.csp_space[ind].transform(data_mu)
+        #     hjorthMobility_features = self.hjorthMobility(curr_space)
+        #     hjorthMobility_features2 = self.hjorthActivity(curr_space)
+        #     hjorthMobility_features3 = self.hjorthComplexity(curr_space)
+        #     LZC_features = self.LZC(curr_space)
+        #     features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
+        #     if type(csp_features) is not list:
+        #         features = [csp_features] + features
+        #         csp_features = np.concatenate(features, axis=1)
+        #     else:
+        #         csp_features = np.concatenate(tuple(features), axis=1)
 
         # Extract spectral features
         # Get features
@@ -179,23 +179,23 @@ class MLModel:
         # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
         fs = eeg.sfreq
         # Get features
-        # csp_features = self.csp_space.transform(data[np.newaxis])[0] old
+        csp_features = self.csp_space.transform(data[np.newaxis])[0]  # old
         # new csp
-        csp_features = []
-        for ind, i in enumerate(self.bands):
-            data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
-            curr_space = self.csp_space[ind].transform(data_mu[np.newaxis])
-            hjorthMobility_features = self.hjorthMobility(curr_space)
-            hjorthMobility_features2 = self.hjorthActivity(curr_space)
-            hjorthMobility_features3 = self.hjorthComplexity(curr_space)
-            LZC_features = self.LZC(curr_space)
-            features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
-            if type(csp_features) is not list:
-                csp_features = np.concatenate([csp_features, np.concatenate(tuple(features), axis=0)],axis=0)
-            else:
+        # csp_features = []
+        # for ind, i in enumerate(self.bands):
+        #     data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
+        #     curr_space = self.csp_space[ind].transform(data_mu[np.newaxis])
+        #     hjorthMobility_features = self.hjorthMobility(curr_space)
+        #     hjorthMobility_features2 = self.hjorthActivity(curr_space)
+        #     hjorthMobility_features3 = self.hjorthComplexity(curr_space)
+        #     LZC_features = self.LZC(curr_space)
+        #     features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
+        #     if type(csp_features) is not list:
+        #         csp_features = np.concatenate([csp_features, np.concatenate(tuple(features), axis=0)],axis=0)
+        #     else:
+        #
+        #         csp_features = np.concatenate(tuple(features), axis=0)
 
-                csp_features = np.concatenate(tuple(features), axis=0)
-        print(csp_features.shape)
         #Spectral features
         bandpower_features = self.bandpower(data[np.newaxis], self.bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data[np.newaxis], self.bands, fs, window_sec=0.5, relative=True)
@@ -219,6 +219,8 @@ class MLModel:
         info = mne.create_info(epochs.ch_names, sfreq, ch_types)
         temp_epoch = copy.deepcopy(self.epochs.get_data())
         for trial in X:
+            if len(trial) < temp_epoch.shape[2]:
+                trial.append()
             temp_epoch = np.concatenate((temp_epoch, trial[np.newaxis]))
         self.epochs = mne.EpochsArray(temp_epoch, info)
         del temp_epoch

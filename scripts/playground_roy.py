@@ -126,6 +126,45 @@ def load_eeg(path):
         labels_2_extract = [label for ind, label in enumerate(labels) if (classes_to_extract[0] == labels[ind]
                                                                            or classes_to_extract[1] == labels[ind])]
         return np.reshape(data_2_extract,[len(data_2_extract)] + list(data_2_extract[0].shape)), np.ravel(labels_2_extract)
+    def band_hunter(data, labels):
+        rf_classifier = RandomForestClassifier(random_state=0)
+        epochs = 0
+        fs = 125
+        max_pred = 0
+        winning_band = []
+        lower = 2
+        upper = 40
+        band_number = 7
+        delta = 5
+        while epochs <= 50:
+            band_range = np.round(np.linspace(lower, upper, band_number),2)
+            bands = np.matrix(';'.join([str(i) + ' ' + str(i + delta) for i in band_range]))
+            pipeline_RF = Pipeline([('classify', rf_classifier)])
+            # Get rest of features
+            bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+            bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+            features = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
+            scaler = StandardScaler()
+            scaler.fit(features)
+            features = scaler.transform(features)
+            # Trial rejection
+            features, labels_curr = features, labels # trials_rejection(features, labels)
+            scores_mix = np.mean(cross_val_score(pipeline_RF, features, labels_curr, cv=3, n_jobs=1)) * 100
+            if max_pred < scores_mix:
+                max_pred = scores_mix
+                winning_band = bands
+                band_number = band_number * 2
+                delta = np.linspace(lower, upper, band_number)[1] - np.linspace(lower, upper, band_number)[0]
+            else:
+                lower = np.random.randint(1, 40)
+                upper = 40 if lower+7 >= 40 else np.random.randint(lower+7, 40)
+                band_number = 7
+                delta = np.linspace(lower, upper, band_number)[1] - np.linspace(lower, upper, band_number)[0]
+            delta = delta if delta > 2 else 2
+            epochs += 1
+        print(max_pred)
+        return max_pred, winning_band
+
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
@@ -170,6 +209,8 @@ def load_eeg(path):
     # SPATIAL FILTERS LETS GO
     #Laplacian
     data, _ = EEG.laplacian(data)
+    pred, bands = band_hunter(data, labels)
+    print(bands)
     # data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
@@ -586,7 +627,7 @@ def over_time_pred(recording_paths):
     plt.show()
 
 if __name__ == '__main__':
-    path = r'../recordings/roy/Online_14_05_22-20_04_37'
+    path = r'../recordings/avi_right_left_idle/Online_12_05_22-15_29_15'
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
