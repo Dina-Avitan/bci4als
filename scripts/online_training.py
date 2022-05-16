@@ -1,4 +1,8 @@
 import pickle
+import sys
+
+import brainflow.board_shim
+
 from bci4als.experiments.online import OnlineExperiment
 from bci4als.eeg import EEG
 
@@ -34,5 +38,10 @@ def run_experiment():
     exp.plot_online_results()
 
 if __name__ == '__main__':
-    run_experiment()
+    try:
+        run_experiment()
+    except brainflow.board_shim.BrainFlowError as err:
+        print('Please make sure the board is ON. Maybe try to restart the board.')
+    sys.exit(0)
+
 

@@ -219,8 +219,10 @@ class MLModel:
         info = mne.create_info(epochs.ch_names, sfreq, ch_types)
         temp_epoch = copy.deepcopy(self.epochs.get_data())
         for trial in X:
-            if len(trial) < temp_epoch.shape[2]:
-                trial.append()
+            while trial.shape[1] < temp_epoch.shape[2]:
+                trial = np.concatenate((trial,np.reshape(np.mean(trial[:,-10:-1],axis=1),[-1,1])),axis=1)  # bandaid for wierd bug that causes recording to be too short
+                if trial.shape[1] == temp_epoch.shape[2]:
+                    print("data recorded was too short. padding with mean to compensate")
             temp_epoch = np.concatenate((temp_epoch, trial[np.newaxis]))
         self.epochs = mne.EpochsArray(temp_epoch, info)
         del temp_epoch
