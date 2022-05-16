@@ -6,24 +6,26 @@ def main():
 
     clock = pygame.time.Clock()
 
-    screen_size = (700, 500)
+    screen_size = (795, 445)
     screen = pygame.display.set_mode(screen_size)
-    screen.fill((223,207,229))
-    # path = 'C:\\Users\\ellah\\PycharmProjects\\Nitzanim\\Nitzagram\\Images\\mountain.jpg'
-    # img = pygame.image.load(path)
-    # img = pygame.transform.scale(img, (300, 100))
+    #screen.fill((223,207,229))
+    img_path = r'..\images\GUI_background.png'
+    img = pygame.image.load(img_path)
+    img = pygame.transform.scale(img, screen_size)
+    screen.blit(img, (0,0))
+    pygame.display.update()
 
     running = True
 
     # Buttons
-    button_offline = Button((100,100),80,200)
-    button_offline.draw_butten(screen,'Offline',text_size=35)
-    button_online = Button((100, 300), 80, 200)
-    button_online.draw_butten(screen,'Online',text_size=35)
-    button_right_left = Button((350,100), 80, 200)
-    button_right_left.draw_butten(screen, 'right, left, idle')
-    button_tongue_hands = Button((350, 300), 80, 200)
-    button_tongue_hands.draw_butten(screen, 'tongue, hands, idle')
+    button_offline = Button((130,105),100,210)
+    #button_offline.draw_butten_rect(screen,'Offline',text_size=35)
+    button_online = Button((130, 270), 100, 210)
+    #button_online.draw_butten_rect(screen,'Online',text_size=35)
+    button_right_left = Button((470,105), 100, 210)
+    #button_right_left.draw_butten_rect(screen, 'right, left, idle')
+    button_tongue_hands = Button((470, 270), 100, 210)
+    #button_tongue_hands.draw_butten_rect(screen, 'tongue, hands, idle')
     type = 0
     path = 0
     button_run = 0
@@ -38,35 +40,55 @@ def main():
 
                 if mouse_in_button(button_offline,click_pose):
                     type = set_experiment_type(1)
+                    button_offline.push_button()
+                    if button_offline.pushed:
+                        button_offline.draw_line(screen,width=5)
+                    else:
+                        button_offline.draw_line(screen, color=(255,255,255), width=5)
 
                 if mouse_in_button(button_online,click_pose):
                     type= set_experiment_type(0)
+                    button_online.push_button()
+                    if button_online.pushed:
+                        button_online.draw_line(screen, width=5)
+                    else:
+                        button_online.draw_line(screen,color=(255,255,255),width=5)
 
                 if mouse_in_button(button_right_left,click_pose):
                     name = 'right_left_idle'
                     path= set_folder_path(name)
                     gui_keys = (0,1,2)
+                    button_right_left.push_button()
+                    if button_right_left.pushed:
+                        button_right_left.draw_line(screen, width=5)
+                    else:
+                        button_right_left.draw_line(screen,color=(255,255,255),width=5)
 
                 if mouse_in_button(button_tongue_hands,click_pose):
                     name = 'tongue_hands_idle'
                     path = set_folder_path(name)
                     gui_keys = (2,3,4)
+                    button_tongue_hands.push_button()
+                    if button_tongue_hands.pushed:
+                        button_tongue_hands.draw_line(screen, width=5)
+                    else:
+                        button_tongue_hands.draw_line(screen,color=(255,255,255),width=5)
 
                 if button_run:
                     if mouse_in_button(button_run,click_pose):
                         return type, path, gui_keys
 
         if type and path:
-            button_run = Button((300, 400), 50, 100)
-            button_run.draw_butten(screen, 'Run!', text_size=30)
+            button_run = Button((377, 375), 50, 50)
+            #button_run.draw_butten_rect(screen, 'Run!', text_size=20)
+            button_run.draw_butten_circle(screen, 'Run!', text_size=20)
 
-        #screen.blit(img, (100, 150))
-        pygame.display.update()
+        # screen.blit(img, (0,0))
+        # pygame.display.update()
+        pygame.display.flip()
         clock.tick(60)
 
     pygame.quit()
-
-
 
 
 def set_experiment_type(type):
