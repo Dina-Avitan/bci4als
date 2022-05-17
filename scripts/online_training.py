@@ -1,4 +1,8 @@
 import pickle
+import sys
+
+import brainflow.board_shim
+
 from bci4als.experiments.online import OnlineExperiment
 from bci4als.eeg import EEG
 
@@ -15,7 +19,7 @@ def run_experiment():
     CYTON_DAISY = 2
 
     # select buffer time
-    buffer_time = 4
+    buffer_time = 5
     # if model.epochs.get_data()[0].shape[1]//125 != buffer_time:
     #     raise IndexError(f"Model buffer time must match online buffer time. change buffer time to"
     #                      f" {model.epochs.get_data()[0]//125} or change model")
@@ -34,5 +38,10 @@ def run_experiment():
     exp.plot_online_results()
 
 if __name__ == '__main__':
-    run_experiment()
+    try:
+        run_experiment()
+    except brainflow.board_shim.BrainFlowError as err:
+        print('Please make sure the board is ON. Maybe try to restart the board.')
+    sys.exit(0)
+
 
