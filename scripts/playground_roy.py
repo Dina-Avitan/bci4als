@@ -627,7 +627,7 @@ def over_time_pred(recording_paths):
     plt.show()
 
 if __name__ == '__main__':
-    path = r'../recordings/avi_right_left_idle/Online_12_05_22-15_29_15'
+    path = r'../recordings/avi_right_left_idle/Online_16_05_22-14_24_01'
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
