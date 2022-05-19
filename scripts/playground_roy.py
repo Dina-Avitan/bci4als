@@ -132,18 +132,24 @@ def load_eeg(path):
         fs = 125
         max_pred = 0
         winning_band = []
-        lower = 2
+        lower = 0.1
         upper = 40
-        band_number = 7
-        delta = 5
-        while epochs <= 50:
+        band_number = 5
+        delta = 3
+        while epochs <= 100:
             band_range = np.round(np.linspace(lower, upper, band_number),2)
             bands = np.matrix(';'.join([str(i) + ' ' + str(i + delta) for i in band_range]))
             pipeline_RF = Pipeline([('classify', rf_classifier)])
             # Get rest of features
             bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
             bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-            features = np.concatenate((bandpower_features_new, bandpower_features_rel), axis=1)
+            # csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+            #           cov_est='epoch')
+            # csp_features = Pipeline(
+            #     [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
+            #                                                                                              labels)
+
+            features = np.concatenate((bandpower_features_rel,bandpower_features_new), axis=1)
             scaler = StandardScaler()
             scaler.fit(features)
             features = scaler.transform(features)
@@ -153,16 +159,16 @@ def load_eeg(path):
             if max_pred < scores_mix:
                 max_pred = scores_mix
                 winning_band = bands
-                band_number = band_number * 2
+                band_number = band_number + 2
                 delta = np.linspace(lower, upper, band_number)[1] - np.linspace(lower, upper, band_number)[0]
             else:
-                lower = np.random.randint(1, 40)
+                lower = np.random.randint(0.1, 40)
                 upper = 40 if lower+7 >= 40 else np.random.randint(lower+7, 40)
-                band_number = 7
                 delta = np.linspace(lower, upper, band_number)[1] - np.linspace(lower, upper, band_number)[0]
-            delta = delta if delta > 2 else 2
+                band_number = band_number -1
+            band_number = band_number if band_number > 3 else np.random.randint(3,20)
+            delta = delta if delta > 2 else np.random.uniform(low=2.5,high=8,size=1)
             epochs += 1
-        print(max_pred)
         return max_pred, winning_band
 
     fs = 125
@@ -170,53 +176,51 @@ def load_eeg(path):
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
     # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
 
-    clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
+    # Ofir's data
+    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    data = EEG['EEG']
+    labels = np.ravel(trainingVec['trainingVec'].T)
+     # data should be trails X electrodes X samples.
+    data = np.transpose(data, (2, 0, 1))
 
-    # # Ofir's data
-    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    # data = EEG['EEG']
-    # labels = np.ravel(trainingVec['trainingVec'].T)
-    #  # data should be trails X electrodes X samples.
-    # data = np.transpose(data, (2, 0, 1))
-    #
-    # final_data = []
-    #
-    # for trial in range(data.shape[0]):
-    #     # C4
-    #     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-    #                           data[trial][9]) / 4
-    #
-    #     # C4
-    #     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-    #                           data[trial][10]) / 4
-    #     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-    #     if trial == 0:
-    #         final_data = new_data[np.newaxis]
-    #     else:
-    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
-    # data = final_data
+    final_data = []
 
-    # Our data
-    data2 = pd.read_pickle(path)
-    #
-    labels = data2.labels
+    for trial in range(data.shape[0]):
+        # C4
+        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+                              data[trial][9]) / 4
 
-    # # Choose clean data or not
-    data = data2.epochs.get_data()
+        # C4
+        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+                              data[trial][10]) / 4
+        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+        if trial == 0:
+            final_data = new_data[np.newaxis]
+        else:
+            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    data = final_data
+
+    # # Our data
+    # data2 = pd.read_pickle(path)
+    # #
+    # labels = data2.labels
+
+    # # # Choose clean data or not
+    # data = data2.epochs.get_data()
     # data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
     # SPATIAL FILTERS LETS GO
     #Laplacian
-    data, _ = EEG.laplacian(data)
+    # data, _ = EEG.laplacian(data)
     pred, bands = band_hunter(data, labels)
-    print(bands)
     # data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
     # data = orthogonalize_hipp(data,['FC1'])
 
     # Initiate classifiers
+    clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
     rf_classifier = RandomForestClassifier(random_state=0)
     mlp_classifier = MLPClassifier(solver='adam',hidden_layer_sizes=[80,50,20,3,20,50,80],max_iter=400, random_state=0)
     xgb_classifier = XGBClassifier()
@@ -266,7 +270,7 @@ def load_eeg(path):
 
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((bandpower_features_wtf, bandpower_features_new, bandpower_features_rel), axis=1)
+    bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_wtf, bandpower_features_new, bandpower_features_rel), axis=1)
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
@@ -310,16 +314,12 @@ def load_eeg(path):
     scores_mix_pred4 = cross_val_predict(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix_pred5 = cross_val_predict(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    # print(data.shape)
-    print(scores_mix2)
     values = [scores_mix,scores_mix2,scores_mix3,scores_mix4,scores_mix5]
     names = ['Linear SVM', 'RandomForest', 'NeuralNet','XGBC','ADA Boost']
-    plt.figure(figsize=(9, 3))
     plt.bar(names, np.mean(values, axis=1))
     plt.suptitle('Classifiers prediction rate')
     plt.show()
 
-    plt.figure(figsize=(9, 3))
 
     #print scores
     (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
@@ -327,29 +327,51 @@ def load_eeg(path):
     (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
     (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
     (print(f"ADA rate is: {np.mean(scores_mix5)*100}%"))
+    plt.clf()
+    fig = plt.figure(figsize=(8, 6), dpi=80)
+    fontsize = 11
 
     # fit pipelines for the confusion matrix and get matrices
     mat1 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred,
                             normalize='all')
-    plt.suptitle('SVM Confusion matrix')
-    plt.show()
+    ax1 = fig.add_subplot(231)
+    mat1.plot(ax=ax1,cmap=plt.cm.Blues)
+    ax1.set_title('SVM', fontsize=fontsize, fontweight='bold')
+
 
     mat2 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred2,
                             normalize='all')
-    plt.suptitle('RandomForest Confusion matrix')
-    plt.show()
+    ax2 = fig.add_subplot(232)
+    mat2.plot(ax =ax2,cmap=plt.cm.Blues)
+    ax2.set_title('RF', fontsize=fontsize, fontweight='bold')
+
     mat3 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred3,
                             normalize='all')
-    plt.suptitle('MLP Confusion matrix')
-    plt.show()
+    ax3 = fig.add_subplot(233)
+    mat3.plot(ax=ax3,cmap=plt.cm.Blues)
+    ax3.set_title('MLP', fontsize=fontsize, fontweight='bold')
+
     mat4 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred4,
                             normalize='all')
-    plt.suptitle('XGB Confusion matrix')
-    plt.show()
+    ax4 = fig.add_subplot(234)
+    mat4.plot(ax=ax4,cmap=plt.cm.Blues)
+    ax4.set_title('XGB', fontsize=fontsize, fontweight='bold')
+
     mat5 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred5,
                             normalize='all')
-    plt.suptitle('LightGBM Confusion matrix')
+    ax5 = fig.add_subplot(235)
+    mat5.plot(ax=ax5,cmap=plt.cm.Blues)
+    ax5.set_title('ADA', size='large', fontweight='bold')
+
+    # another properties
+    fig.suptitle(f'Confusion matrices', fontsize=20, fontweight='bold')
+    fig.tight_layout(pad=2.0)
+    textstr = '\n'.join(('0 - Right','1 - Left','2 - Idle'))
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    fig.text(0.77, 0.29, textstr, fontsize=11, verticalalignment='top', bbox=props)
     plt.show()
+    print(pred)
+    print(bands)
 
 def get_feature_mat(model):
     def ICA_perform(model):
@@ -627,7 +649,7 @@ def over_time_pred(recording_paths):
     plt.show()
 
 if __name__ == '__main__':
-    path = r'../recordings/avi_right_left_idle/Online_16_05_22-14_24_01'
+    path = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_right_left_idle\Online_16_05_22-14_37_02'
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
