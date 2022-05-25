@@ -175,45 +175,45 @@ def load_eeg(path):
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
     # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
-
-    # Ofir's data
-    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    data = EEG['EEG']
-    labels = np.ravel(trainingVec['trainingVec'].T)
-     # data should be trails X electrodes X samples.
-    data = np.transpose(data, (2, 0, 1))
-
-    final_data = []
-
-    for trial in range(data.shape[0]):
-        # C4
-        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-                              data[trial][9]) / 4
-
-        # C4
-        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-                              data[trial][10]) / 4
-        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-        if trial == 0:
-            final_data = new_data[np.newaxis]
-        else:
-            final_data = np.vstack((final_data, new_data[np.newaxis]))
-    data = final_data
+    #
+    # # Ofir's data
+    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    # data = EEG['EEG']
+    # labels = np.ravel(trainingVec['trainingVec'].T)
+    #  # data should be trails X electrodes X samples.
+    # data = np.transpose(data, (2, 0, 1))
+    #
+    # final_data = []
+    #
+    # for trial in range(data.shape[0]):
+    #     # C4
+    #     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+    #                           data[trial][9]) / 4
+    #
+    #     # C4
+    #     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+    #                           data[trial][10]) / 4
+    #     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+    #     if trial == 0:
+    #         final_data = new_data[np.newaxis]
+    #     else:
+    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
+    # data = final_data
 
     # # Our data
-    # data2 = pd.read_pickle(path)
-    # #
-    # labels = data2.labels
+    data2 = pd.read_pickle(path)
+    #
+    labels = data2.labels
 
     # # # Choose clean data or not
     # data = data2.epochs.get_data()
-    # data = ICA_perform(data2).get_data() # ICA
+    data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
     # SPATIAL FILTERS LETS GO
     #Laplacian
-    # data, _ = EEG.laplacian(data)
-    pred, bands = band_hunter(data, labels)
+    data, _ = EEG.laplacian(data)
+    # pred, bands = band_hunter(data, labels)
     # data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
@@ -649,7 +649,7 @@ def over_time_pred(recording_paths):
     plt.show()
 
 if __name__ == '__main__':
-    path = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_right_left_idle\Online_16_05_22-14_37_02'
+    path = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_right_left_idle\Online_25_05_22-15_26_56'
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
