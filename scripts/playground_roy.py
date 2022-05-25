@@ -5,8 +5,10 @@ import lightgbm as lgb
 import math
 from tkinter import filedialog, Tk
 import mne
+import niapy.problems
 import scipy.io
 import seaborn
+import sklearn.feature_selection
 from matplotlib.colors import ListedColormap
 import json
 from sklearn.datasets import make_classification, make_moons, make_circles
@@ -42,6 +44,26 @@ from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import matplotlib.pyplot as plt
 from scipy.signal import hilbert
+from niapy.problems import Problem
+from niapy.task import Task
+from niapy.algorithms.basic import ParticleSwarmOptimization
+
+class SVMFeatureSelection(Problem):
+    def __init__(self, X_train, y_train, alpha=0.99):
+        super().__init__(dimension=X_train.shape[1], lower=0, upper=1)
+        self.X_train = X_train
+        self.y_train = y_train
+        self.alpha = alpha
+
+    def _evaluate(self, x):
+        selected = x > 0.5
+        num_selected = selected.sum()
+        if num_selected == 0:
+            return 1.0
+        accuracy = cross_val_score(SVC(), self.X_train[:, selected], self.y_train, cv=2, n_jobs=-1).mean()
+        score = 1 - accuracy
+        num_features = self.X_train.shape[1]
+        return self.alpha * score + (1 - self.alpha) * (num_selected / num_features)
 #import eeglib.eeg #steal features
 def load_eeg(path):
     def ICA_check(unfiltered_model):
@@ -126,10 +148,9 @@ def load_eeg(path):
         labels_2_extract = [label for ind, label in enumerate(labels) if (classes_to_extract[0] == labels[ind]
                                                                            or classes_to_extract[1] == labels[ind])]
         return np.reshape(data_2_extract,[len(data_2_extract)] + list(data_2_extract[0].shape)), np.ravel(labels_2_extract)
-    def band_hunter(data, labels):
+    def band_hunter(data, labels,fs):
         rf_classifier = RandomForestClassifier(random_state=0)
         epochs = 0
-        fs = 125
         max_pred = 0
         winning_band = []
         lower = 0.1
@@ -143,13 +164,13 @@ def load_eeg(path):
             # Get rest of features
             bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
             bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-            # csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
-            #           cov_est='epoch')
-            # csp_features = Pipeline(
-            #     [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
-            #                                                                                              labels)
+            csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+                      cov_est='epoch')
+            csp_features = Pipeline(
+                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
+                                                                                                         labels)
 
-            features = np.concatenate((bandpower_features_rel,bandpower_features_new), axis=1)
+            features = np.concatenate((csp_features,bandpower_features_rel,bandpower_features_new), axis=1)
             scaler = StandardScaler()
             scaler.fit(features)
             features = scaler.transform(features)
@@ -170,50 +191,56 @@ def load_eeg(path):
             delta = delta if delta > 2 else np.random.uniform(low=2.5,high=8,size=1)
             epochs += 1
         return max_pred, winning_band
-
-    fs = 125
+    def band_hunter_swarm_algorithm(data,labels,fs):
+        problem = SVMFeatureSelection(bandpower_features_wtf, labels)
+        task = Task(problem, max_iters=100)
+        algorithm = ParticleSwarmOptimization(population_size=10, seed=1234)
+        best_features, best_fitness = algorithm.run(task)
+        best_features_index = [ind for ind, feature in enumerate(best_features) if (feature > 0.5)]
+    pred = []
+    fs = 500
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
     # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
     #
-    # # Ofir's data
-    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    # data = EEG['EEG']
-    # labels = np.ravel(trainingVec['trainingVec'].T)
-    #  # data should be trails X electrodes X samples.
-    # data = np.transpose(data, (2, 0, 1))
-    #
-    # final_data = []
-    #
-    # for trial in range(data.shape[0]):
-    #     # C4
-    #     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-    #                           data[trial][9]) / 4
-    #
-    #     # C4
-    #     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-    #                           data[trial][10]) / 4
-    #     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-    #     if trial == 0:
-    #         final_data = new_data[np.newaxis]
-    #     else:
-    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
-    # data = final_data
+    # Ofir's data
+    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    data = EEG['EEG']
+    labels = np.ravel(trainingVec['trainingVec'].T)
+     # data should be trails X electrodes X samples.
+    data = np.transpose(data, (2, 0, 1))
+
+    final_data = []
+
+    for trial in range(data.shape[0]):
+        # C4
+        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+                              data[trial][9]) / 4
+
+        # C4
+        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+                              data[trial][10]) / 4
+        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+        if trial == 0:
+            final_data = new_data[np.newaxis]
+        else:
+            final_data = np.vstack((final_data, new_data[np.newaxis]))
+    data = final_data
 
     # # Our data
-    data2 = pd.read_pickle(path)
-    #
-    labels = data2.labels
+    # data2 = pd.read_pickle(path)
+    # #
+    # labels = data2.labels
 
     # # # Choose clean data or not
     # data = data2.epochs.get_data()
-    data = ICA_perform(data2).get_data() # ICA
+    # data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
     # SPATIAL FILTERS LETS GO
     #Laplacian
-    data, _ = EEG.laplacian(data)
-    # pred, bands = band_hunter(data, labels)
+    # data, _ = EEG.laplacian(data)
+    pred, bands = band_hunter(data, labels,fs)
     # data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
@@ -271,6 +298,12 @@ def load_eeg(path):
     # LZC_features = ml_model.MLModel.LZC(data)
     # DFA_features = ml_model.MLModel.DFA(data)
     bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_wtf, bandpower_features_new, bandpower_features_rel), axis=1)
+    problem = SVMFeatureSelection(bandpower_features_wtf,labels)
+    task = Task(problem, max_iters=100)
+    algorithm = ParticleSwarmOptimization(population_size=10, seed=1234)
+    best_features, best_fitness = algorithm.run(task)
+    best_features_index = [ind for ind, feature in enumerate(best_features) if (feature > 0.5)]
+    bandpower_features_wtf = bandpower_features_wtf.T[best_features > 0.5].T
 
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
@@ -370,7 +403,8 @@ def load_eeg(path):
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     fig.text(0.77, 0.29, textstr, fontsize=11, verticalalignment='top', bbox=props)
     plt.show()
-    print(pred)
+    if pred:
+        print(pred)
     print(bands)
 
 def get_feature_mat(model):
