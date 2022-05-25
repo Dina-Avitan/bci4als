@@ -176,7 +176,6 @@ class MLModel:
 
     def online_predict(self, data: NDArray, eeg: EEG):
         # Prepare parameters
-        # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
         fs = eeg.sfreq
         # Get features
         csp_features = self.csp_space.transform(data[np.newaxis])[0]  # old

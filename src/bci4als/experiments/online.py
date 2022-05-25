@@ -194,7 +194,7 @@ class OnlineExperiment(Experiment):
                 feedback.update(predict_stim=prediction, skip=skip_bool, progress_criteria=self.threshold)
 
             if self.mode == 'test':
-                num_tries += 1
+                num_tries += 1 #TODO: insert stop stimolus - noam.a make sure the reccording stop too
                 # Update the feedback according the prediction
                 feedback.update(predict_stim=prediction, skip=(num_tries >= self.skip_after), progress_criteria=self.skip_after)
 

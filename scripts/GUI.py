@@ -26,10 +26,10 @@ def main():
     #button_right_left.draw_butten_rect(screen, 'right, left, idle')
     button_tongue_hands = Button((470, 270), 100, 210)
     #button_tongue_hands.draw_butten_rect(screen, 'tongue, hands, idle')
-    type = 0
-    path = 0
-    button_run = 0
-    gui_keys = 0
+    type = None
+    path = ""
+    button_run_existence = False
+    gui_keys = None
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -38,11 +38,19 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 click_pose = event.pos # the position of the event
 
+                if button_run_existence and mouse_in_button(button_run,click_pose):
+                    print("run clicked")
+                    button_run.push_button()
+                    return type, path, gui_keys
+
                 if mouse_in_button(button_offline,click_pose):
                     type = set_experiment_type(1)
                     button_offline.push_button()
                     if button_offline.pushed:
                         button_offline.draw_line(screen,width=5)
+                        if button_online.pushed:
+                            button_online.push_button()
+                            button_online.draw_line(screen, color=(255, 255, 255), width=5)
                     else:
                         button_offline.draw_line(screen, color=(255,255,255), width=5)
 
@@ -51,6 +59,9 @@ def main():
                     button_online.push_button()
                     if button_online.pushed:
                         button_online.draw_line(screen, width=5)
+                        if button_offline.pushed:
+                            button_offline.push_button()
+                            button_offline.draw_line(screen, color=(255, 255, 255), width=5)
                     else:
                         button_online.draw_line(screen,color=(255,255,255),width=5)
 
@@ -61,6 +72,9 @@ def main():
                     button_right_left.push_button()
                     if button_right_left.pushed:
                         button_right_left.draw_line(screen, width=5)
+                        if button_tongue_hands.pushed:
+                            button_tongue_hands.push_button()
+                            button_tongue_hands.draw_line(screen, color=(255, 255, 255), width=5)
                     else:
                         button_right_left.draw_line(screen,color=(255,255,255),width=5)
 
@@ -71,17 +85,17 @@ def main():
                     button_tongue_hands.push_button()
                     if button_tongue_hands.pushed:
                         button_tongue_hands.draw_line(screen, width=5)
+                        if button_right_left.pushed:
+                            button_right_left.push_button()
+                            button_right_left.draw_line(screen, color=(255, 255, 255), width=5)
                     else:
                         button_tongue_hands.draw_line(screen,color=(255,255,255),width=5)
 
-                if button_run:
-                    if mouse_in_button(button_run,click_pose):
-                        return type, path, gui_keys
-
-        if type and path:
+        if type is not None and path!="":
             button_run = Button((377, 375), 50, 50)
             #button_run.draw_butten_rect(screen, 'Run!', text_size=20)
             button_run.draw_butten_circle(screen, 'Run!', text_size=20)
+            button_run_existence = True
 
         # screen.blit(img, (0,0))
         # pygame.display.update()
@@ -103,10 +117,9 @@ def set_folder_path(name):
         path = path+'\\'+'avi_'+name
         return path
 
-def mouse_in_button(button, mouse_pos):
 
+def mouse_in_button(button, mouse_pos):
     if button.pos[0] + button.width > mouse_pos[0] > button.pos[0] and \
             button.pos[1]< mouse_pos[1] < button.pos[1] + button.height:
         return True
 
-main()
