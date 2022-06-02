@@ -1,6 +1,8 @@
 # This script is meant to load models and allow the user to change hyper-parameters
 # so you could fine-tune the real offline_training class
 import copy
+import random
+
 import lightgbm as lgb
 import math
 from tkinter import filedialog, Tk
@@ -46,7 +48,8 @@ import matplotlib.pyplot as plt
 from scipy.signal import hilbert
 from niapy.problems import Problem
 from niapy.task import Task
-from niapy.algorithms.basic import ParticleSwarmOptimization
+from niapy.algorithms.basic import ParticleSwarmOptimization, DifferentialEvolution
+
 
 class SVMFeatureSelection(Problem):
     def __init__(self, X_train, y_train, alpha=0.99):
@@ -60,7 +63,7 @@ class SVMFeatureSelection(Problem):
         num_selected = selected.sum()
         if num_selected == 0:
             return 1.0
-        accuracy = cross_val_score(SVC(), self.X_train[:, selected], self.y_train, cv=2, n_jobs=-1).mean()
+        accuracy = cross_val_score(lgb.LGBMClassifier(), self.X_train[:, selected], self.y_train, cv=2, n_jobs=-1).mean()
         score = 1 - accuracy
         num_features = self.X_train.shape[1]
         return self.alpha * score + (1 - self.alpha) * (num_selected / num_features)
@@ -157,7 +160,7 @@ def load_eeg(path):
         upper = 40
         band_number = 5
         delta = 3
-        while epochs <= 100:
+        while epochs <= 5:
             band_range = np.round(np.linspace(lower, upper, band_number),2)
             bands = np.matrix(';'.join([str(i) + ' ' + str(i + delta) for i in band_range]))
             pipeline_RF = Pipeline([('classify', rf_classifier)])
@@ -192,16 +195,84 @@ def load_eeg(path):
             epochs += 1
         return max_pred, winning_band
     def band_hunter_swarm_algorithm(data,labels,fs):
-        problem = SVMFeatureSelection(bandpower_features_wtf, labels)
-        task = Task(problem, max_iters=100)
-        algorithm = ParticleSwarmOptimization(population_size=10, seed=1234)
-        best_features, best_fitness = algorithm.run(task)
-        best_features_index = [ind for ind, feature in enumerate(best_features) if (feature > 0.5)]
+        epochs = 0
+        max_pred = 0
+        winning_band = []
+        band_number = random.randint(4, 10)
+        lower = [np.random.randint(0.1, 40) for _ in range(band_number)]
+        delta = np.ones(band_number) * np.abs(random.gauss(0, 0.7)) * [random.randint(3, 10) for _ in
+                                                                       range(band_number)]
+        bands_to_keep = []
+        def get_band_from_string(str):
+            marker = False
+            ans = ''
+            for letter in str:
+                if marker and not letter == str[-1]:
+                    ans += letter
+                if letter == '[':
+                    marker = True
+            # ans = [float(to_integer) for to_integer in str.split(ans)] if ans else ''
+            return ans
+        def band_str_to_int(band_str):
+            return [float(to_integer) for to_integer in str.split(band_str)] if band_str else ''
+        while epochs <= 50:
+            feature_labels = []
+            counter = 0
+            no_err = ''
+            while not no_err:
+                try:
+                    bands_in_list = [[np.round(lower_sc,2), np.round(lower_sc + delta_sc,2)] for (lower_sc,delta_sc) in zip(lower,delta)]
+                    # combine old bands with new bands
+                    bands = bands_in_list + bands_to_keep
+                    bands = np.matrix(bands)
+                    # Get rest of features
+                    bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+                    [feature_labels.append(f'BP_non_rel{np.ravel(i)}') for i in bands for _ in range(np.size(data,1))]# for chan in model.epochs.ch_names]
+                    bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+                    [feature_labels.append(f'BP_rel{np.ravel(i)}') for i in bands for _ in range(np.size(data,1))]# for chan in model.epochs.ch_names]
+                    no_err = 'all good'
+                except IndexError:
+                    counter += 1
+                    delta += 0.5
+                    print(counter)
+                    print(f'error. trying to increase delta ({delta}). loop number {counter}')
+            csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+                      cov_est='epoch')
+            csp_features = Pipeline(
+                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
+                                                                                                         labels)
+            [feature_labels.append(f'CSP_Component{i}') for i in range(csp_features.shape[1])]
+            features = np.concatenate((csp_features,bandpower_features_rel,bandpower_features_new), axis=1)
+            problem = SVMFeatureSelection(features, labels)
+            task = Task(problem, max_iters=20)
+            algorithm = DifferentialEvolution()
+            best_features, best_fitness = algorithm.run(task)
+            features_to_keep = set([feature for ind,feature in enumerate(feature_labels) if (best_features>0.5)[ind]])
+            bands_to_keep_str = set([get_band_from_string(good_band) for good_band in features_to_keep if get_band_from_string(good_band)])
+            bands_to_keep = [band_str_to_int(good_band) for good_band in bands_to_keep_str]
+            if max_pred < best_fitness:
+                max_pred = best_fitness
+                winning_band = bands_to_keep
+                band_number = band_number + 2
+                delta = np.concatenate([delta*random.gauss(0.9, 0.1),
+                                        np.ones(2) * np.abs(random.gauss(0, 0.7)) * [random.randint(4, 10) for _ in
+                                                                               range(2)]])
+            else:
+                band_number = band_number - 1
+                lower = [np.random.randint(0.1, 40) for _ in range(band_number)]
+                delta = np.ones(band_number)*np.abs(random.gauss(0,0.7))*[random.randint(3,10) for _ in range(band_number)]
+            if not band_number > 3:
+                band_number = random.randint(4,10)
+                lower = [np.random.randint(0.1, 40) for _ in range(band_number)]
+                delta = np.ones(band_number)*np.abs(random.gauss(0,0.7))*[random.randint(3,10) for _ in range(band_number)]
+            epochs += 1
+        return max_pred, winning_band
     pred = []
     fs = 500
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    bands = np.matrix([[i,i+2]for ind,i in enumerate(list(range(1,40))[:-2])])
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
-    # bands = np.matrix('2 4; 8 12; 18 25; 2 40')
+    # bands = '[28.34.64],[24.25.97],[21.23.85],[17.19.36],[38.40.05],[20.24.83],[34.39.69],[17.23.],[32.39.72],[38.42.76],[28.29.77],[38.38.97],[23.24.74],[10.12.92],[36.47.62],[22.33.14],[12.14.13],[14.17.42],[13.18.84],[26.27.9],[26.28.21],[26.28.13],[20.23.04],[35.39.26],[4.17.93],[25.27.21],[20.21.61],[8.10.85],[20.24.2],[10.11.28],[26.29.41],[12.17.79],[16.28.94],[1.2.77],[36.41.69],[1.6.69],[35.36.28],[37.39.35],[1.2.8],[3.4.98],[24.29.99],[13.17.35],[4.11.06],[23.30.76],[17.21.35],[8.11.88],[0.5.81],[24.28.92],[24.25.8],[37.40.54],[1.2.69],[24.28.7],[14.19.58],[24.29.88],[10.11.3],[21.22.24],[11.12.05],[15.17.21],[32.33.9],[35.36.12],[20.28.23],[3.6.49],[36.48.13],[3.6.6],[24.31.52],[17.21.83],[35.37.85],[25.26.05],[10.18.54],[28.30.95],[24.27.88],[35.36.97],[5.8.86],[25.29.7],[13.19.97],[37.40.88],[28.29.43],[0.6.06],[17.21.92],[38.39.7],[20.21.69],[33.39.81],[26.28.27],[7.11.86],[16.17.54],[1.2.7],[6.7.96],[32.33.99],[16.17.77],[32.34.21],[3.4.9],[20.22.99],[13.22.73],[35.38.8],[6.17.76],[34.41.06],[3.13.35],[5.7.43],[32.35.26],[16.17.83],[12.14.56],[14.17.7],[8.10.92],[0.5.88],[34.42.76],[8.15.78],[3.7.18],[6.9.88],[23.28.39],[33.44.14],[37.38.05],[16.25.41],[16.19.88],[37.38.45],[12.15.6],[29.35.76],[13.14.45],[13.17.27],[10.11.79],[2.4.13],[3.6.64],[23.28.29],[5.7.78],[1.9.69],[5.7.59],[3.5.61],[22.25.76],[28.29.54],[6.9.41],[6.11.99],[29.39.58],[27.36.49],[23.25.13],[3.5.56],[15.17.11],[39.49.35],[25.27.11],[32.41.4],[11.13.75],[26.31.29],[1.3.02],[1.6.84],[9.12.44],[8.10.64],[23.32.06],[33.34.09],[9.12.53],[25.27.4],[17.21.27],[20.25.39],[9.11.13],[14.17.48],[37.38.96],[10.14.86],[6.11.57],[16.17.48],[25.28.59],[12.14.61],[39.40.43],[10.12.09],[31.33.12],[25.27.46],[36.37.45],[39.44.84],[3.5.12],[38.42.23],[35.38.7],[28.29.24],[37.38.26],[14.18.8],[6.8.99],[9.12.14],[17.20.8],[5.7.32],[12.19.72],[19.20.61],[37.38.8],[8.11.59],[20.22.02],[28.29.83],[33.35.12],[32.33.47],[28.29.48],[33.35.13],[5.8.59],[4.5.43],[10.11.8],[22.28.64],[34.45.65],[9.11.64],[16.17.8],[17.23.97],[7.9.64],[20.24.88],[21.25.83],[21.30.73],[27.30.44],[5.9.74],[32.34.27],[26.27.99],[38.42.19],[12.23.14],[2.11.4],[5.10.84],[13.19.],[4.6.17],[27.30.86],[27.31.76],[4.6.99],[19.20.98],[7.9.99],[20.21.77],[21.27.64],[19.21.35],[15.17.4],[29.33.86],[3.9.81],[19.22.53],[25.27.53],[37.38.1],[37.39.98],[29.34.99],[15.17.53],[12.17.88],[12.16.18],[38.39.57]'
     #
     # Ofir's data
     EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
@@ -240,7 +311,8 @@ def load_eeg(path):
     # SPATIAL FILTERS LETS GO
     #Laplacian
     # data, _ = EEG.laplacian(data)
-    pred, bands = band_hunter(data, labels,fs)
+    # pred, bands = band_hunter_swarm_algorithm(data, labels,fs)
+    # bands = np.matrix(bands)
     # data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
     # Orthoganilization by Hipp
     # https://doi.org/10.1016/j.neuroimage.2016.01.055
@@ -300,7 +372,7 @@ def load_eeg(path):
     bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_wtf, bandpower_features_new, bandpower_features_rel), axis=1)
     problem = SVMFeatureSelection(bandpower_features_wtf,labels)
     task = Task(problem, max_iters=100)
-    algorithm = ParticleSwarmOptimization(population_size=10, seed=1234)
+    algorithm = ParticleSwarmOptimization()
     best_features, best_fitness = algorithm.run(task)
     best_features_index = [ind for ind, feature in enumerate(best_features) if (feature > 0.5)]
     bandpower_features_wtf = bandpower_features_wtf.T[best_features > 0.5].T
@@ -403,8 +475,6 @@ def load_eeg(path):
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     fig.text(0.77, 0.29, textstr, fontsize=11, verticalalignment='top', bbox=props)
     plt.show()
-    if pred:
-        print(pred)
     print(bands)
 
 def get_feature_mat(model):
