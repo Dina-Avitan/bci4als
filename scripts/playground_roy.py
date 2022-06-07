@@ -268,49 +268,49 @@ def load_eeg(path):
             epochs += 1
         return max_pred, winning_band
     pred = []
-    fs = 500
+    fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
-    bands = np.matrix([[i,i+2]for ind,i in enumerate(list(range(1,40))[:-2])])
+    # bands = np.matrix([[i,i+2]for ind,i in enumerate(list(range(1,40))[:-2])])
     # bands = np.matrix('1 4; 7 12; 17 22; 25 40; 1 40')
     # bands = '[28.34.64],[24.25.97],[21.23.85],[17.19.36],[38.40.05],[20.24.83],[34.39.69],[17.23.],[32.39.72],[38.42.76],[28.29.77],[38.38.97],[23.24.74],[10.12.92],[36.47.62],[22.33.14],[12.14.13],[14.17.42],[13.18.84],[26.27.9],[26.28.21],[26.28.13],[20.23.04],[35.39.26],[4.17.93],[25.27.21],[20.21.61],[8.10.85],[20.24.2],[10.11.28],[26.29.41],[12.17.79],[16.28.94],[1.2.77],[36.41.69],[1.6.69],[35.36.28],[37.39.35],[1.2.8],[3.4.98],[24.29.99],[13.17.35],[4.11.06],[23.30.76],[17.21.35],[8.11.88],[0.5.81],[24.28.92],[24.25.8],[37.40.54],[1.2.69],[24.28.7],[14.19.58],[24.29.88],[10.11.3],[21.22.24],[11.12.05],[15.17.21],[32.33.9],[35.36.12],[20.28.23],[3.6.49],[36.48.13],[3.6.6],[24.31.52],[17.21.83],[35.37.85],[25.26.05],[10.18.54],[28.30.95],[24.27.88],[35.36.97],[5.8.86],[25.29.7],[13.19.97],[37.40.88],[28.29.43],[0.6.06],[17.21.92],[38.39.7],[20.21.69],[33.39.81],[26.28.27],[7.11.86],[16.17.54],[1.2.7],[6.7.96],[32.33.99],[16.17.77],[32.34.21],[3.4.9],[20.22.99],[13.22.73],[35.38.8],[6.17.76],[34.41.06],[3.13.35],[5.7.43],[32.35.26],[16.17.83],[12.14.56],[14.17.7],[8.10.92],[0.5.88],[34.42.76],[8.15.78],[3.7.18],[6.9.88],[23.28.39],[33.44.14],[37.38.05],[16.25.41],[16.19.88],[37.38.45],[12.15.6],[29.35.76],[13.14.45],[13.17.27],[10.11.79],[2.4.13],[3.6.64],[23.28.29],[5.7.78],[1.9.69],[5.7.59],[3.5.61],[22.25.76],[28.29.54],[6.9.41],[6.11.99],[29.39.58],[27.36.49],[23.25.13],[3.5.56],[15.17.11],[39.49.35],[25.27.11],[32.41.4],[11.13.75],[26.31.29],[1.3.02],[1.6.84],[9.12.44],[8.10.64],[23.32.06],[33.34.09],[9.12.53],[25.27.4],[17.21.27],[20.25.39],[9.11.13],[14.17.48],[37.38.96],[10.14.86],[6.11.57],[16.17.48],[25.28.59],[12.14.61],[39.40.43],[10.12.09],[31.33.12],[25.27.46],[36.37.45],[39.44.84],[3.5.12],[38.42.23],[35.38.7],[28.29.24],[37.38.26],[14.18.8],[6.8.99],[9.12.14],[17.20.8],[5.7.32],[12.19.72],[19.20.61],[37.38.8],[8.11.59],[20.22.02],[28.29.83],[33.35.12],[32.33.47],[28.29.48],[33.35.13],[5.8.59],[4.5.43],[10.11.8],[22.28.64],[34.45.65],[9.11.64],[16.17.8],[17.23.97],[7.9.64],[20.24.88],[21.25.83],[21.30.73],[27.30.44],[5.9.74],[32.34.27],[26.27.99],[38.42.19],[12.23.14],[2.11.4],[5.10.84],[13.19.],[4.6.17],[27.30.86],[27.31.76],[4.6.99],[19.20.98],[7.9.99],[20.21.77],[21.27.64],[19.21.35],[15.17.4],[29.33.86],[3.9.81],[19.22.53],[25.27.53],[37.38.1],[37.39.98],[29.34.99],[15.17.53],[12.17.88],[12.16.18],[38.39.57]'
     #
-    # Ofir's data
-    EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
-    trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
-    data = EEG['EEG']
-    labels = np.ravel(trainingVec['trainingVec'].T)
-     # data should be trails X electrodes X samples.
-    data = np.transpose(data, (2, 0, 1))
+    # # Ofir's data
+    # EEG = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\EEG.mat')
+    # trainingVec = scipy.io.loadmat(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\scripts\trainingVec.mat')
+    # data = EEG['EEG']
+    # labels = np.ravel(trainingVec['trainingVec'].T)
+    #  # data should be trails X electrodes X samples.
+    # data = np.transpose(data, (2, 0, 1))
+    #
+    # final_data = []
+    #
+    # for trial in range(data.shape[0]):
+    #     # C4
+    #     data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
+    #                           data[trial][9]) / 4
+    #
+    #     # C4
+    #     data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
+    #                           data[trial][10]) / 4
+    #     new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
+    #     if trial == 0:
+    #         final_data = new_data[np.newaxis]
+    #     else:
+    #         final_data = np.vstack((final_data, new_data[np.newaxis]))
+    # data = final_data
 
-    final_data = []
-
-    for trial in range(data.shape[0]):
-        # C4
-        data[trial][8] -= (data[trial][2] + data[trial][14] + data[trial][7] +
-                              data[trial][9]) / 4
-
-        # C4
-        data[trial][4] -= (data[trial][5] + data[trial][3] + data[trial][0] +
-                              data[trial][10]) / 4
-        new_data = np.delete(data[trial], [2, 14, 7, 9, 5, 3, 0, 10], axis=0)
-        if trial == 0:
-            final_data = new_data[np.newaxis]
-        else:
-            final_data = np.vstack((final_data, new_data[np.newaxis]))
-    data = final_data
-
-    # # Our data
-    # data2 = pd.read_pickle(path)
-    # #
-    # labels = data2.labels
+    # Our data
+    data2 = pd.read_pickle(path)
+    #
+    labels = data2.labels
 
     # # # Choose clean data or not
     # data = data2.epochs.get_data()
-    # data = ICA_perform(data2).get_data() # ICA
+    data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
     # SPATIAL FILTERS LETS GO
     #Laplacian
-    # data, _ = EEG.laplacian(data)
+    data, _ = EEG.laplacian(data)
     # pred, bands = band_hunter_swarm_algorithm(data, labels,fs)
     # bands = np.matrix(bands)
     # data, labels = extract_2_labels(data, labels, np.unique(labels)[[0,1]])
