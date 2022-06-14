@@ -28,6 +28,7 @@ from nptyping import NDArray
 from psychopy import visual, core
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
+import random
 
 
 class OnlineExperiment(Experiment):
@@ -65,7 +66,11 @@ class OnlineExperiment(Experiment):
         self.co_learning: bool = co_learning
 
         # audio
-        self.audio_success_path = os.path.join(r'../src/bci4als/experiments', 'audio', f'success.mp3')  # hope its generic
+        curr_path = os.getcwd()
+        bci4als_path = os.path.dirname(curr_path)
+        success_pathes = os.path.join(bci4als_path,'src','bci4als','experiments','audio', 'success_sounds')
+        self.num_of_success_sounds = len(os.listdir(success_pathes))
+        self.audio_success_path = [os.path.join(success_pathes, str(i)+'.mp3') for i in range(1,self.num_of_success_sounds+1)]
         self.audio_next_pathes = [os.path.join(r'../src/bci4als/experiments', 'audio', f'next_right.mp3'),
                                   os.path.join(r'../src/bci4als/experiments', 'audio', f'next_left.mp3'),
                                   os.path.join(r'../src/bci4als/experiments', 'audio', f'next_idle.mp3')]
@@ -169,7 +174,8 @@ class OnlineExperiment(Experiment):
             self.play_sound = True
             if self.play_sound:
                 if prediction == stim:
-                    playsound.playsound(self.audio_success_path)
+                    rand = random.randint(1, self.num_of_success_sounds)
+                    playsound.playsound(self.audio_success_path[rand])
 
             if self.co_learning:# and prediction == stim:  # maybe prediction doesnt have to be == stim
                 self.batch_stack[self.stack_order[stim]].append(np.squeeze(epochs.get_data()))
