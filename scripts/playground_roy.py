@@ -2,7 +2,7 @@
 # so you could fine-tune the real offline_training class
 import copy
 import random
-
+import os
 import lightgbm as lgb
 import math
 from tkinter import filedialog, Tk
@@ -752,6 +752,33 @@ def over_time_pred(recording_paths):
     plt.suptitle('Over-time online learning trial success rate out of total classification attempts')
     plt.show()
 
+def predict_through_all_recordings(target_dir):
+    strip_func = lambda x: os.path.dirname(x)
+    curr_dir = os.getcwd()
+    recording_dir = strip_func(curr_dir) + r'\recordings' + target_dir
+    print(recording_dir)
+    print(curr_dir)
+    files_in_recording_dir = os.listdir(recording_dir)
+    for date_name in files_in_recording_dir:
+        no_model_found = False
+        temp_path = os.path.join(recording_dir, date_name)
+        while True:
+            try:
+                temp_model = pd.read_pickle(os.path.join(temp_path, 'pre_laplacian.pickle'))
+                break
+            except FileNotFoundError:
+                try:
+                    temp_model = pd.read_pickle(os.path.join(temp_path,'trained_model.pickle'))
+                    break
+                except FileNotFoundError:
+                    no_model_found = True
+                    break
+        if no_model_found:
+            continue
+
+
+
+
 if __name__ == '__main__':
     path = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_right_left_idle\Online_25_05_22-15_26_56'
     # import pandas as pd
@@ -759,9 +786,10 @@ if __name__ == '__main__':
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    load_eeg(path+'/trained_model.pickle')
+    # load_eeg(path+'/trained_model.pickle')
     # plot_calssifiers(datasets)
-    import matplotlib.pyplot as plt
-    plot_online_results(path+'/results.json')
+    # import matplotlib.pyplot as plt
+    # plot_online_results(path+'/results.json')
     # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
     #                for rec in [88]])
+    predict_through_all_recordings(r'\avi_right_left_idle')
