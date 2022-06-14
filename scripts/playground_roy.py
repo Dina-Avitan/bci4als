@@ -2,7 +2,7 @@
 # so you could fine-tune the real offline_training class
 import copy
 import random
-
+import os
 import lightgbm as lgb
 import math
 from tkinter import filedialog, Tk
@@ -68,7 +68,7 @@ class SVMFeatureSelection(Problem):
         num_features = self.X_train.shape[1]
         return self.alpha * score + (1 - self.alpha) * (num_selected / num_features)
 #import eeglib.eeg #steal features
-def load_eeg(path):
+def load_eeg(path,data=None,labels=None):
     def ICA_check(unfiltered_model):
         """
         This function is for visualization the ICA process and for choosing coordinates to exclude
@@ -299,14 +299,16 @@ def load_eeg(path):
     #         final_data = np.vstack((final_data, new_data[np.newaxis]))
     # data = final_data
 
-    # Our data
-    data2 = pd.read_pickle(path)
-    #
-    labels = data2.labels
+    ## if the input is data:
+    if data is None and labels is None:
+        # Our data
+        data2 = pd.read_pickle(path)
+        #
+        labels = data2.labels
 
-    # # # Choose clean data or not
-    # data = data2.epochs.get_data()
-    data = ICA_perform(data2).get_data() # ICA
+        # # # Choose clean data or not
+        # data = data2.epochs.get_data()
+        data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
     # SPATIAL FILTERS LETS GO
     #Laplacian
@@ -752,16 +754,56 @@ def over_time_pred(recording_paths):
     plt.suptitle('Over-time online learning trial success rate out of total classification attempts')
     plt.show()
 
+def concat_all_recordings(target_dir):
+    strip_func = lambda x: os.path.dirname(x)
+    curr_dir = os.getcwd()
+    recording_dir = strip_func(curr_dir) + r'\recordings' + target_dir
+    files_in_recording_dir = os.listdir(recording_dir)
+    all_trials = []
+    all_labels = []
+    for date_name in files_in_recording_dir:
+        no_model_found = False
+        temp_path = os.path.join(recording_dir, date_name)
+        while True:
+            try:
+                temp_model = pd.read_pickle(os.path.join(temp_path, 'pre_laplacian.pickle'))
+                break
+            except FileNotFoundError:
+                try:
+                    temp_model = pd.read_pickle(os.path.join(temp_path,'trained_model.pickle'))
+                    break
+                except FileNotFoundError:
+                    no_model_found = True
+                    break
+        if no_model_found:
+            continue
+        temp_trials = temp_model.epochs.get_data()
+        temp_labels = temp_model.labels
+        try:
+            all_trials = np.concatenate((all_trials,temp_trials),axis=0) if type(all_trials) == np.ndarray else temp_trials
+        except ValueError:
+            if np.size(all_trials,2) < np.size(temp_trials,2):
+                temp_trials = temp_trials[:, :, 0:np.size(all_trials, 2)]
+            else:
+                all_trials = all_trials[:,:,0:np.size(temp_trials,2)]
+            all_trials = np.concatenate((all_trials,temp_trials),axis=0) if type(all_trials) == np.ndarray else temp_trials
+        all_labels = np.concatenate((all_labels,temp_labels),axis=0) if type(all_trials) == np.ndarray else temp_labels
+    return all_trials, all_labels
+
+
+
+
 if __name__ == '__main__':
     path = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_right_left_idle\Online_25_05_22-15_26_56'
+    trials, labels = concat_all_recordings(r'\avi_right_left_idle')
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    load_eeg(path+'/trained_model.pickle')
+    load_eeg(path+'/trained_model.pickle', data=trials,labels=labels)
     # plot_calssifiers(datasets)
-    import matplotlib.pyplot as plt
-    plot_online_results(path+'/results.json')
+    # import matplotlib.pyplot as plt
+    # plot_online_results(path+'/results.json')
     # over_time_pred([fr'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy\{rec}\results.json'
     #                for rec in [88]])
