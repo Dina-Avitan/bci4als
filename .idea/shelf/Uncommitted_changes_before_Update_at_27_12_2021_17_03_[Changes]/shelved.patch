@@ -1,0 +1,138 @@
+Index: scripts/visualization.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import pickle\r\nimport mne\r\nimport os\r\nimport pickle\r\nfrom bci4als.eeg import EEG\r\nfrom bci4als.ml_model import MLModel\r\nfrom bci4als.experiments.offline import OfflineExperiment\r\nfrom mne.channels import make_standard_montage\r\n\r\n\r\nclass Visualization:\r\n    def __init__(self, epochs,info,raw_data):\r\n        # convert data to mne.Epochs\r\n        self.epochs = epochs\r\n        self.info = info\r\n        self.raw_data = raw_data\r\n    def plot_raw_data(self):\r\n        print('plot_raw_data')\r\n        # mne.viz.plot_raw(self.raw_data)\r\n        self.epochs.plot()\r\n        self.epochs.plot_psd(fmin=5, fmax = 60, picks='eeg')\r\n        montage = make_standard_montage('standard_1020')\r\n        epochs.set_montage(montage)\r\n        # Apply band-pass filter\r\n        epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)\r\n        self.epochs.plot(n_epochs=10)\r\n        self.epochs.plot_psd(fmin=5, fmax=60, picks='eeg')\r\n\r\nfpath1 = 'C:\\\\Users\\\\pc\\\\Desktop\\\\bci4als\\\\recordings\\\\epochs.pickle'\r\nfpath2 = 'C:\\\\Users\\\\pc\\\\Desktop\\\\bci4als\\\\recordings\\\\info.pickle'\r\nfpath3 = 'C:\\\\Users\\\\pc\\\\Desktop\\\\bci4als\\\\recordings\\\\raw_data.pickle'\r\nepochs = pickle.load(open(fpath1, 'rb'))\r\ninfo = pickle.load(open(fpath2, 'rb'))\r\nraw_data = pickle.load(open(fpath3, 'rb'))\r\na = Visualization(epochs,info,raw_data)\r\na.plot_raw_data()\r\n\r\n    # # set montage\r\n    # montage = make_standard_montage('standard_1020')\r\n    # epochs.set_montage(montage)\r\n    #\r\n    # # Apply band-pass filter\r\n    # epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)\r\n# if d == 1:\r\n#     D = 1\r\n# #def visualization(raw_data):\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/scripts/visualization.py b/scripts/visualization.py
+--- a/scripts/visualization.py	(revision 5f76e8eace69cffe658cc431e4bdfe49af547900)
++++ b/scripts/visualization.py	(date 1640550922520)
+@@ -6,33 +6,36 @@
+ from bci4als.ml_model import MLModel
+ from bci4als.experiments.offline import OfflineExperiment
+ from mne.channels import make_standard_montage
+-
++from mne.preprocessing import (ICA, create_eog_epochs, create_ecg_epochs, corrmap)
++from matplotlib import pyplot as plt
+ 
+ class Visualization:
+-    def __init__(self, epochs,info,raw_data):
++    def __init__(self,epochs,raw_data):
+         # convert data to mne.Epochs
+         self.epochs = epochs
+-        self.info = info
++        # self.info = info
+         self.raw_data = raw_data
+     def plot_raw_data(self):
+         print('plot_raw_data')
+         # mne.viz.plot_raw(self.raw_data)
+-        self.epochs.plot()
+-        self.epochs.plot_psd(fmin=5, fmax = 60, picks='eeg')
+-        montage = make_standard_montage('standard_1020')
+-        epochs.set_montage(montage)
++        self.epochs[1].plot()
++        plt.plot(list(self.epochs[3].get_data()[0][3]))
++        plt.show()
++        self.epochs[1].plot_psd(fmin=5, fmax = 60, picks='eeg')
++        # montage = make_standard_montage('standard_1020')
++        # epochs.set_montage(montage)
+         # Apply band-pass filter
+-        epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
+-        self.epochs.plot(n_epochs=10)
+-        self.epochs.plot_psd(fmin=5, fmax=60, picks='eeg')
+-
++        self.epochs.filter(7., 30., fir_design='firwin', skip_by_annotation='edge', verbose=False)
++        self.epochs[1].plot()
++        self.epochs[1].plot_psd(fmin=5, fmax=60, picks='eeg')
++#plt.plot(list(self.epochs[20].get_data()[0][5]))
+ fpath1 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\epochs.pickle'
+-fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\info.pickle'
++# fpath2 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\info.pickle'
+ fpath3 = 'C:\\Users\\pc\\Desktop\\bci4als\\recordings\\raw_data.pickle'
+ epochs = pickle.load(open(fpath1, 'rb'))
+-info = pickle.load(open(fpath2, 'rb'))
++# info = pickle.load(open(fpath2, 'rb'))
+ raw_data = pickle.load(open(fpath3, 'rb'))
+-a = Visualization(epochs,info,raw_data)
++a = Visualization(epochs,raw_data)
+ a.plot_raw_data()
+ 
+     # # set montage
+Index: scripts/offline_training.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import os\r\nimport pickle\r\nfrom bci4als.eeg import EEG\r\nfrom bci4als.ml_model import MLModel\r\nfrom bci4als.experiments.offline import OfflineExperiment\r\n\r\n\r\ndef offline_experiment():\r\n\r\n    SYNTHETIC_BOARD = -1\r\n    CYTON_DAISY = 2\r\n    eeg = EEG(board_id=SYNTHETIC_BOARD)\r\n    exp = OfflineExperiment(eeg=eeg, num_trials=5, trial_length=3,\r\n                            full_screen=True, audio=False)\r\n    channel_removed = []\r\n    trials, labels = exp.run()\r\n    session_directory = exp.session_directory\r\n\r\n    # do Laplacian filter\r\n    trials, channel_removed = eeg.laplacian(trials)\r\n    pickle.dump(trials, open(os.path.join(session_directory, 'trials_after_laplacian.pickle'), 'wb'))\r\n    # channel_removed = channel_removed.append() ##TODO: NOAM WILL MAKE OUTLIER CHANNELS TO REMOVE\r\n\r\n    # Get model ready for classification\r\n    model = MLModel(trials=trials, labels=labels, channel_removed=channel_removed)\r\n    pickle.dump(model, open(os.path.join(session_directory, 'raw_data.pickle'), 'wb'))\r\n\r\n    # save epochs\r\n    epochs = model.epochs_extractor(eeg)\r\n    pickle.dump(epochs, open(os.path.join(session_directory, 'epochs.pickle'), 'wb'))\r\n\r\n    # train model and classify\r\n    model.offline_training(eeg=eeg, model_type='csp_lda')\r\n\r\n    # Dump the MLModel\r\n    pickle.dump(model, open(os.path.join(session_directory, 'model.pickle'), 'wb'))\r\n\r\n\r\nif __name__ == '__main__':\r\n\r\n    offline_experiment()\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/scripts/offline_training.py b/scripts/offline_training.py
+--- a/scripts/offline_training.py	(revision 5f76e8eace69cffe658cc431e4bdfe49af547900)
++++ b/scripts/offline_training.py	(date 1640293819876)
+@@ -4,7 +4,6 @@
+ from bci4als.ml_model import MLModel
+ from bci4als.experiments.offline import OfflineExperiment
+ 
+-
+ def offline_experiment():
+ 
+     SYNTHETIC_BOARD = -1
+Index: scripts/online_training.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import pickle\r\n\r\nfrom bci4als.ml_model import MLModel\r\nfrom bci4als.experiments.online import OnlineExperiment\r\nfrom bci4als.eeg import EEG\r\n\r\n\r\ndef run_experiment(model_path: str):\r\n\r\n    model = pickle.load(open(model_path, 'rb'))\r\n\r\n    SYNTHETIC_BOARD = -1\r\n    CYTON_DAISY = 2\r\n    eeg = EEG(board_id=CYTON_DAISY)\r\n\r\n    exp = OnlineExperiment(eeg=eeg, model=model, num_trials=10, buffer_time=4, threshold=3, skip_after=8,\r\n                           co_learning=True, debug=True)\r\n\r\n    exp.run(use_eeg=True, full_screen=True)\r\n\r\n\r\nif __name__ == '__main__':\r\n\r\n    model_path = r'../recordings/avi/23/model.pickle'\r\n    # model_path = None  # use if synthetic\r\n    run_experiment(model_path=model_path)\r\n\r\n# PAY ATTENTION!\r\n# If synthetic - model Path should be none\r\n# otherwise choose a model path\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/scripts/online_training.py b/scripts/online_training.py
+--- a/scripts/online_training.py	(revision 5f76e8eace69cffe658cc431e4bdfe49af547900)
++++ b/scripts/online_training.py	(date 1640294055278)
+@@ -11,7 +11,7 @@
+ 
+     SYNTHETIC_BOARD = -1
+     CYTON_DAISY = 2
+-    eeg = EEG(board_id=CYTON_DAISY)
++    eeg = EEG(board_id=SYNTHETIC_BOARD)
+ 
+     exp = OnlineExperiment(eeg=eeg, model=model, num_trials=10, buffer_time=4, threshold=3, skip_after=8,
+                            co_learning=True, debug=True)
+Index: scripts/onlinereport.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import json\r\nimport typing\r\nimport matplotlib.pyplot as plt\r\nimport numpy\r\nimport numpy as np\r\n\r\n\r\ndef trial_accuracy(trial: typing.List[typing.List[int]]):\r\n    target = trial[0][0]\r\n    n_attempts = len(trial)\r\n    n_success = len([1 for t, p in trial if t == p])\r\n    accuracy = n_success / n_attempts\r\n    return accuracy\r\n\r\n\r\nbest_accuracies = []\r\nerrors = []\r\n\r\nsessions = [7, 12, 13, 14, 15, 17, 21, 23]\r\nfor session_number in sessions:\r\n    fpath = f\"../recordings/avi/{session_number}/results.json\"\r\n    results = json.load(open(fpath))\r\n\r\n    accuracies = [trial_accuracy(trial) for trial in results]\r\n\r\n    plt.plot(accuracies, label=\"accuracy\")\r\n    plt.hlines(numpy.mean(accuracies), 0, len(results), colors='black', linestyle='-', label=\"mean accuracy\")\r\n    plt.hlines(0.2, 0, len(results), colors='black', linestyle='--', label=\"chance\")\r\n    plt.xlabel(\"Trial Number\")\r\n    plt.ylabel(\"Accuracy\")\r\n    # datetime =\r\n    plt.title(f\"Accuracies for Session {session_number}\")\r\n    plt.legend()\r\n    plt.text(0.05, numpy.mean(accuracies) + 0.05, f\"{round(numpy.mean(accuracies), 3)}\")\r\n    # plt.yticks(list(plt.yticks()[0]) + [numpy.mean(accuracies)])\r\n    # plt.ylim((0,1))\r\n    plt.ylim(-0.05, 1.05)\r\n    plt.show()\r\n    best_accuracies.append(numpy.mean(accuracies))\r\n    errors.append(np.var(accuracies))\r\nprint(errors)\r\nplt.errorbar(numpy.arange(1, len(best_accuracies) + 1), best_accuracies, yerr=errors, label=\"accuracy\")\r\n# plt.hlines(numpy.mean(best_accuracies), 0, len(best_accuracies), colors='black', linestyle='-', label=\"mean accuracy\")\r\nplt.hlines(0.2, 0, len(best_accuracies), colors='black', linestyle='--', label=\"chance\")\r\nplt.title(f\"Mean Accuracy by Session\")\r\nplt.xlabel(\"Session Number\")\r\nplt.ylabel(\"Accuracy\")\r\n# plt.text(0.05, numpy.mean(best_accuracies) + 0.05, f\"{round(numpy.mean(best_accuracies), 3)}\")\r\nplt.ylim(-0.05, 1.05)\r\n# plt.xticks(numpy.arange(len(best_accuracies)), numpy.arange(1, len(best_accuracies) + 1))\r\nplt.legend()\r\nplt.show()\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/scripts/onlinereport.py b/scripts/onlinereport.py
+--- a/scripts/onlinereport.py	(revision 5f76e8eace69cffe658cc431e4bdfe49af547900)
++++ b/scripts/onlinereport.py	(date 1640293864967)
+@@ -16,7 +16,7 @@
+ best_accuracies = []
+ errors = []
+ 
+-sessions = [7, 12, 13, 14, 15, 17, 21, 23]
++sessions = [ 12, 13, 14, 15, 17, 21, 23]
+ for session_number in sessions:
+     fpath = f"../recordings/avi/{session_number}/results.json"
+     results = json.load(open(fpath))
+Index: .idea/bci4als.iml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<module type=\"PYTHON_MODULE\" version=\"4\">\r\n  <component name=\"NewModuleRootManager\">\r\n    <content url=\"file://$MODULE_DIR$\">\r\n      <sourceFolder url=\"file://$MODULE_DIR$/src\" isTestSource=\"false\" />\r\n    </content>\r\n    <orderEntry type=\"jdk\" jdkName=\"Python 3.8\" jdkType=\"Python SDK\" />\r\n    <orderEntry type=\"sourceFolder\" forTests=\"false\" />\r\n  </component>\r\n  <component name=\"PyDocumentationSettings\">\r\n    <option name=\"format\" value=\"GOOGLE\" />\r\n    <option name=\"myDocStringFormat\" value=\"Google\" />\r\n    <option name=\"renderExternalDocumentation\" value=\"true\" />\r\n  </component>\r\n</module>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/bci4als.iml b/.idea/bci4als.iml
+--- a/.idea/bci4als.iml	(revision 5f76e8eace69cffe658cc431e4bdfe49af547900)
++++ b/.idea/bci4als.iml	(date 1640264493257)
+@@ -1,9 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <module type="PYTHON_MODULE" version="4">
+   <component name="NewModuleRootManager">
+-    <content url="file://$MODULE_DIR$">
+-      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+-    </content>
++    <content url="file://$MODULE_DIR$" />
+     <orderEntry type="jdk" jdkName="Python 3.8" jdkType="Python SDK" />
+     <orderEntry type="sourceFolder" forTests="false" />
+   </component>
