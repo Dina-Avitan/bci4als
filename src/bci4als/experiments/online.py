@@ -176,7 +176,7 @@ class OnlineExperiment(Experiment):
                 if all(self.batch_stack):
                     data_batched = [data_stack.pop(0) for data_stack in self.batch_stack]
                     self.model.partial_fit(data_batched, self.keys, epochs, sfreq)
-                    pickle.dump(self.model, open(os.path.join(self.session_directory, 'trained_model.pickle'), 'wb'))
+                    pickle.dump(self.model, open(os.path.join(self.session_directory, 'model.pickle'), 'wb'))
             target_predictions.append((int(stim), int(prediction)))
 
             # Reset the clock for the next buffer

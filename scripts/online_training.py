@@ -31,7 +31,7 @@ def run_experiment():
     eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
     # If mode= 'practice': It will skip after skip_after errors. it will skip after threshold successes
     # If mode= 'test': It will not skip. It will run skip_after times whether you succeed or fail the trial
-    exp = OnlineExperiment(eeg=eeg, model=model,num_trials=9, buffer_time=buffer_time, threshold=2, skip_after=3,
+    exp = OnlineExperiment(eeg=eeg, model=model,num_trials=9, buffer_time=buffer_time, threshold=2, skip_after=1,
                            co_learning=True, debug=False, mode='test',stim_sound=False,keys=(0,1,2))
 
     exp.run(use_eeg=True, full_screen=True)

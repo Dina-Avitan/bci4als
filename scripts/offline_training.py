@@ -25,7 +25,7 @@ def offline_experiment(gui_folder_path=0,gui_keys=0):
     session_directory = exp.session_directory
     unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])
     unfiltered_model.epochs_extractor(copy.deepcopy(eeg))
-    pickle.dump(unfiltered_model, open(os.path.join(session_directory, 'pre_laplacian.pickle'), 'wb'))
+    pickle.dump(unfiltered_model, open(os.path.join(session_directory, 'model.pickle'), 'wb'))
     print('Finish!!')
     sys.exit(0)
 
