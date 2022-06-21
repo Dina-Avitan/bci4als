@@ -1,7 +1,8 @@
 from offline_training import offline_experiment
 from online_training import run_experiment
 import GUI
-# from GUI import main
+
+# # from GUI import main
 type, path ,gui_keys = GUI.main()
 print("main GUI worked")
 

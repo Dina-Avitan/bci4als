@@ -9,18 +9,30 @@ from bci4als.experiments.offline import OfflineExperiment
 import numpy as np
 
 
-def offline_experiment(gui_folder_path=0,gui_keys=0):
+def offline_experiment(gui_folder_path=0,gui_keys=0,advanced_gui ={}):
 
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2
+
+    data_type = SYNTHETIC_BOARD
+    if advanced_gui:
+        if advanced_gui['use_synthetic']:
+            data_type = SYNTHETIC_BOARD
+        else:
+            data_type = CYTON_DAISY
+
     gain = {"1": 0, "2":  1, "4": 2, "6": 3, "8": 4, "12": 5, "24": 6}
     configurations = ''.join([''.join(f"x{str(i + 1)}0{gain['6']}0110X") for i in range(8)]
                              +
                              [''.join(f"x{i}0{gain['6']}0110X") for i in ['Q', 'W', 'E']] + [
                 ''.join(f"x{i}131000X") for i in ['R', 'T', 'Y', 'U', 'I']])
 
-    eeg = EEG(board_id=SYNTHETIC_BOARD, config_json_converted=configurations)
-    exp = OfflineExperiment(eeg=eeg, num_trials=27, trial_length=5, gui_folder_path=gui_folder_path, gui_keys=gui_keys, full_screen=True, audio=False,keys=(0,1,2))
+    eeg = EEG(board_id=data_type, config_json_converted=configurations)
+    if advanced_gui:
+        exp = OfflineExperiment(eeg=eeg, num_trials=advanced_gui['num_trials'], trial_length=advanced_gui['trial_length'], gui_folder_path=gui_folder_path,
+                                gui_keys=gui_keys, full_screen=True, audio=False, keys=advanced_gui['classes_keys'])
+    else:
+        exp = OfflineExperiment(eeg=eeg, num_trials=27, trial_length=5, gui_folder_path=gui_folder_path, gui_keys=gui_keys, full_screen=True, audio=False,keys=(0,1,2))
     trials, labels = exp.run()
     session_directory = exp.session_directory
     unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])

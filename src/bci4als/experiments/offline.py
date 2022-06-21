@@ -20,6 +20,7 @@ class OfflineExperiment(Experiment):
     def __init__(self, eeg: EEG, num_trials: int, trial_length: float,gui_folder_path,gui_keys,
                  next_length: float = 1, cue_length: float = 0.25, ready_length: float = 1,
                  full_screen: bool = False, audio: bool = False,keys=(0,1,2)):
+
         if gui_keys:
             keys = gui_keys
         super().__init__(eeg, num_trials,keys)
