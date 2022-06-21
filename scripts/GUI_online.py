@@ -15,11 +15,11 @@ class GUI_online:
             .place(relx=.1, rely=.0)
         self.rec_params: dict = {}
 
-        # name
-        v = StringVar(self.win, value='avi')  # set default text
-        self.entry_name = Entry(self.win, textvariable=v)
-        self.entry_name.place(relx=self.entry_place, rely=.1)
-        Label(self.win, text="Name:").place(relx=self.label_place, rely=.1)
+        # # name
+        # v = StringVar(self.win, value='avi')  # set default text
+        # self.entry_name = Entry(self.win, textvariable=v)
+        # self.entry_name.place(relx=self.entry_place, rely=.1)
+        # Label(self.win, text="Name:").place(relx=self.label_place, rely=.1)
 
         # synthtic
         self.use_synthetic = StringVar(self.win)
@@ -61,7 +61,7 @@ class GUI_online:
         synthetic_spin.place(relx=self.entry_place, rely=.8)
 
     def submit_button(self):
-        # def check_validity():  # todo: add validation
+        # def check_validity():
 
         def get_valid_data():
             # check_validty()
@@ -76,30 +76,9 @@ class GUI_online:
                 'trial_length': int(self.entry_trial_length.get()),
                 'stim_sound': self.use_sound.get()
             }
-            # save to json
-            # folder_path = create_session_folder(self.entry_name.get())
-            # json_save(folder_path, "params.json", self.rec_params)
-            # estimated_time = self.rec_params['blocks_N'] * self.rec_params['trials_N'] * self.rec_params['StimOnset'] \
-            #                  * self.rec_params['interTime']
-            # showinfo("Inforamtion", f"The session will open in a few seconds. \nEstimated time for "
-            #                         f"{self.rec_params['blocks_N']} blocks:\n{float('{0:.2f}'.format(estimated_time))}")
             self.win.destroy()  # close the window
 
         Button(self.win, text="submit", command=get_valid_data).place(relx=.5, rely=.9)
-
-    def find_stim_dict(self):
-        stim_dict = {}
-        if self.stim.get() == 'black_shapes':
-            stim_dict = {"NON_TARGET": "black circle",
-                         "TARGET_1": "black square",
-                         "TARGET_2": "black triangle"
-                        }
-        elif self.stim.get() == 'blue_shpaes':
-            stim_dict = { "NON_TARGET": "circle",
-                          "TARGET_1": "square",
-                          "TARGET_2": "triangular"
-                        }
-        return stim_dict
 
     def run_gui(self):
         self.submit_button()

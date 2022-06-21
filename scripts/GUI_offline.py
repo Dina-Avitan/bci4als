@@ -15,11 +15,11 @@ class GUI_offline:
             .place(relx=.1, rely=.0)
         self.rec_params: dict = {}
 
-        # name
-        v = StringVar(self.win, value='avi')  # set default text
-        self.entry_name = Entry(self.win, textvariable=v)
-        self.entry_name.place(relx=self.entry_place, rely=.1)
-        Label(self.win, text="Name:").place(relx=self.label_place, rely=.1)
+        # # name
+        # v = StringVar(self.win, value='avi')  # set default text
+        # self.entry_name = Entry(self.win, textvariable=v)
+        # self.entry_name.place(relx=self.entry_place, rely=.1)
+        # Label(self.win, text="Name:").place(relx=self.label_place, rely=.1)
 
         # synthtic
         self.use_synthetic = StringVar(self.win)
@@ -27,12 +27,6 @@ class GUI_offline:
         self.use_synthetic.set('False')
         Label(self.win, text='Use synthetic board:').place(relx=self.label_place, rely=.2)
         synthetic_spin.place(relx=self.entry_place, rely=.2)
-
-        # stimulus type
-        # self.stim = StringVar(self.win)
-        # stimulus_type_spin = Spinbox(self.win, values=['black_shapes', 'blue_shapes'], textvariable=self.stim, width=20)
-        # stimulus_type_spin.place(relx=self.entry_place, rely=.3)
-        # Label(self.win, text='Stimulus Type:').place(relx=self.label_place, rely=.3)
 
         # Classes
         v = StringVar(self.win, value='012') # set default text
@@ -60,7 +54,7 @@ class GUI_offline:
         synthetic_spin.place(relx=self.entry_place, rely=.7)
 
     def submit_button(self):
-        # def check_validity():  # todo: add validation
+        # def check_validity():
 
         def get_valid_data():
             # check_validty()
@@ -74,30 +68,10 @@ class GUI_offline:
                 'trial_length': int(self.entry_trial_length.get()),
                 'stim_sound': self.use_sound.get()
             }
-            # save to json
-            # folder_path = create_session_folder(self.entry_name.get())
-            # json_save(folder_path, "params.json", self.rec_params)
-            # estimated_time = self.rec_params['blocks_N'] * self.rec_params['trials_N'] * self.rec_params['StimOnset'] \
-            #                  * self.rec_params['interTime']
-            # showinfo("Inforamtion", f"The session will open in a few seconds. \nEstimated time for "
-            #                         f"{self.rec_params['blocks_N']} blocks:\n{float('{0:.2f}'.format(estimated_time))}")
             self.win.destroy()  # close the window
 
         Button(self.win, text="submit", command=get_valid_data).place(relx=.5, rely=.8)
 
-    def find_stim_dict(self):
-        stim_dict = {}
-        if self.stim.get() == 'black_shapes':
-            stim_dict = {"NON_TARGET": "black circle",
-                         "TARGET_1": "black square",
-                         "TARGET_2": "black triangle"
-                        }
-        elif self.stim.get() == 'blue_shpaes':
-            stim_dict = { "NON_TARGET": "circle",
-                          "TARGET_1": "square",
-                          "TARGET_2": "triangular"
-                        }
-        return stim_dict
 
     def run_gui(self):
         self.submit_button()
