@@ -25,6 +25,8 @@ fpath = '<PATH TO FILE HERE>'
 d = pickle.load(open(fpath, 'rb'))
 ++++++++++++++++++++++++++++++++++
 
+The model has different fields. to get to the data you need to call model.epochs.get_data(). 
+
 In some of the later folders, the trials and labels are put together into the model.pickle file.
 
 Use the `test` folder when you are testing the bci4als system, and don't really care about the data.
