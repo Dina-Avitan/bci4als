@@ -117,7 +117,6 @@ def set_folder_path(name):
         path = path+'\\'+'avi_'+name
         return path
 
-
 def mouse_in_button(button, mouse_pos):
     if button.pos[0] + button.width > mouse_pos[0] > button.pos[0] and \
             button.pos[1]< mouse_pos[1] < button.pos[1] + button.height:

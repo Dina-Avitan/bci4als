@@ -17,12 +17,12 @@ from psychopy import visual
 
 class OfflineExperiment(Experiment):
 
-    def __init__(self, eeg: EEG, num_trials: int, trial_length: float,gui_folder_path,gui_keys,
+    def __init__(self, eeg: EEG, num_trials: int, trial_length: float,pygame_gui_folder_path,pygame_gui_keys,
                  next_length: float = 1, cue_length: float = 0.25, ready_length: float = 1,
                  full_screen: bool = False, audio: bool = False,keys=(0,1,2)):
 
-        if gui_keys:
-            keys = gui_keys
+        if pygame_gui_keys:
+            keys = pygame_gui_keys
         super().__init__(eeg, num_trials,keys)
         self.experiment_type = "Offline"
         self.window_params: Dict[str, Any] = {}
@@ -36,7 +36,7 @@ class OfflineExperiment(Experiment):
         self.trial_length: float = trial_length
 
         # paths
-        self.gui_folder_path = gui_folder_path
+        self.gui_folder_path = pygame_gui_folder_path
         self.subject_directory: str = ''
         self.session_directory: str = ''
         self.images_path: Dict[str, str] = {

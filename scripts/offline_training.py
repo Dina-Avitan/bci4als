@@ -9,7 +9,7 @@ from bci4als.experiments.offline import OfflineExperiment
 import numpy as np
 
 
-def offline_experiment(gui_folder_path=0,gui_keys=0,advanced_gui ={}):
+def offline_experiment(pygame_gui_folder_path=0,pygame_gui_keys=0,advanced_gui ={}):
 
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2
@@ -29,10 +29,10 @@ def offline_experiment(gui_folder_path=0,gui_keys=0,advanced_gui ={}):
 
     eeg = EEG(board_id=data_type, config_json_converted=configurations)
     if advanced_gui:
-        exp = OfflineExperiment(eeg=eeg, num_trials=advanced_gui['num_trials'], trial_length=advanced_gui['trial_length'], gui_folder_path=gui_folder_path,
-                                gui_keys=gui_keys, full_screen=True, audio=False, keys=advanced_gui['classes_keys'])
+        exp = OfflineExperiment(eeg=eeg, num_trials=advanced_gui['num_trials'], trial_length=advanced_gui['trial_length'], pygame_gui_folder_path=pygame_gui_folder_path,
+                                pygame_gui_keys=pygame_gui_keys, full_screen=True, audio=False, keys=advanced_gui['classes_keys'])
     else:
-        exp = OfflineExperiment(eeg=eeg, num_trials=27, trial_length=5, gui_folder_path=gui_folder_path, gui_keys=gui_keys, full_screen=True, audio=False,keys=(0,1,2))
+        exp = OfflineExperiment(eeg=eeg, num_trials=27, trial_length=5, pygame_gui_folder_path=pygame_gui_folder_path, pygame_gui_keys=pygame_gui_keys, full_screen=True, audio=False,keys=(0,1,2))
     trials, labels = exp.run()
     session_directory = exp.session_directory
     unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])
