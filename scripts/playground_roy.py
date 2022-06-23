@@ -267,6 +267,106 @@ def load_eeg(path,data=None,labels=None):
                 delta = np.ones(band_number)*np.abs(random.gauss(0,0.7))*[random.randint(3,10) for _ in range(band_number)]
             epochs += 1
         return max_pred, winning_band
+    def get_features(data, labels, fs):
+        csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+                  cov_est='epoch')
+        csp_features = Pipeline(
+            [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
+                                                                                                     labels)
+
+        ## trying csp space
+        bandpower_features_wtf = []
+        csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
+                  cov_est='epoch')
+        for i in bands:
+            data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
+            csp_space = Pipeline(
+                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data_mu,
+                                                                                                         labels)
+            hjorthMobility_features = ml_model.MLModel.hjorthMobility(csp_space)
+            hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(csp_space)
+            hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(csp_space)
+            bandpower_features_new = ml_model.MLModel.bandpower(csp_space, np.matrix([1, 100]), fs, window_sec=0.5,
+                                                                relative=False)
+            bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, np.matrix([1, 100]), fs, window_sec=0.5,
+                                                                relative=True)
+            LZC_features = ml_model.MLModel.LZC(csp_space)
+            features = [hjorthMobility_features, hjorthMobility_features2]
+            if type(bandpower_features_wtf) is not list:
+                features = [bandpower_features_wtf] + features
+                bandpower_features_wtf = np.concatenate(features, axis=1)
+            else:
+                bandpower_features_wtf = np.concatenate(tuple(features), axis=1)
+
+        # Get rest of features
+        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+        # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+        # hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
+        # hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(data)
+
+        # LZC_features = ml_model.MLModel.LZC(data)
+        # DFA_features = ml_model.MLModel.DFA(data)
+        bandpower_features_wtf = np.concatenate(
+            (csp_features, bandpower_features_wtf, bandpower_features_new, bandpower_features_rel), axis=1)
+        return bandpower_features_wtf
+    def get_features_with_baseline(data,baseline,  labels, fs):
+        csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+                  cov_est='epoch')
+        csp_features = Pipeline(
+            [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
+                                                                                                     labels)
+
+        ## trying csp space
+        data_features = []
+        baseline_features = []
+        csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
+                  cov_est='epoch')
+        for i in bands:
+            data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
+            baseline_mu = mne.filter.filter_data(copy.copy(baseline), fs, i[0, 0], i[0, 1])
+            csp_space = Pipeline(
+                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data_mu,labels)
+            data_and_baseline_in_csp_space = [csp_space.transform(data_mu),csp_space.transform(baseline_mu)]
+            for ind, thing_in_csp_space in enumerate(data_and_baseline_in_csp_space):
+                hjorthMobility_features = ml_model.MLModel.hjorthMobility(thing_in_csp_space)
+                hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(thing_in_csp_space)
+                hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(thing_in_csp_space)
+                bandpower_features_new = ml_model.MLModel.bandpower(thing_in_csp_space, np.matrix([1, 100]), fs, window_sec=0.5,
+                                                                    relative=False)
+                bandpower_features_rel = ml_model.MLModel.bandpower(thing_in_csp_space, np.matrix([1, 100]), fs, window_sec=0.5,
+                                                                    relative=True)
+                LZC_features = ml_model.MLModel.LZC(thing_in_csp_space)
+                features = [hjorthMobility_features, hjorthMobility_features2]
+                if ind == 0:
+                    if type(data_features) is not list:
+                        features = [data_features] + features
+                        data_features = np.concatenate(features, axis=1)
+                    else:
+                        data_features = np.concatenate(tuple(features), axis=1)
+                else:
+                    if type(baseline_features) is not list:
+                        features = [baseline_features] + features
+                        baseline_features = np.concatenate(features, axis=1)
+                    else:
+                        baseline_features = np.concatenate(tuple(features), axis=1)
+        # Get rest of features
+        bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
+        bandpower_features_new_base = ml_model.MLModel.bandpower(baseline, bands, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel_base = ml_model.MLModel.bandpower(baseline, bands, fs, window_sec=0.5, relative=True)
+        # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
+        # hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
+        # hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(data)
+
+        # LZC_features = ml_model.MLModel.LZC(data)
+        # DFA_features = ml_model.MLModel.DFA(data)
+        data_features = np.concatenate(
+            (csp_features, data_features, bandpower_features_new, bandpower_features_rel), axis=1)
+        baseline_features = np.concatenate(
+            (csp_features, baseline_features, bandpower_features_new, bandpower_features_rel), axis=1)
+        return data_features, baseline_features
+
     pred = []
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
@@ -336,49 +436,17 @@ def load_eeg(path,data=None,labels=None):
     #     csp_features.append(Pipeline([('asd',UnsupervisedSpatialFilter(PCA(3), average=True)),('asdd',csp)]).fit_transform(data_mu, labels))
     # csp_features = np.concatenate((csp_features),axis=1)
     # normal broadband
-    csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
-              cov_est='epoch')
-    csp_features= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
-                                                                                                          labels)
-
-    ## trying csp space
-    bandpower_features_wtf = []
-    csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
-              cov_est='epoch')
-    for i in bands:
-        data_mu = mne.filter.filter_data(copy.copy(data),fs,i[0,0],i[0,1])
-        csp_space= Pipeline([('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data_mu,
-                                                                                    labels)
-        hjorthMobility_features = ml_model.MLModel.hjorthMobility(csp_space)
-        hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(csp_space)
-        hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(csp_space)
-        bandpower_features_new = ml_model.MLModel.bandpower(csp_space,np.matrix([1,100]) , fs, window_sec=0.5, relative=False)
-        bandpower_features_rel = ml_model.MLModel.bandpower(csp_space, np.matrix([1,100]), fs, window_sec=0.5, relative=True)
-        LZC_features = ml_model.MLModel.LZC(csp_space)
-        features = [hjorthMobility_features, hjorthMobility_features2]
-        if type(bandpower_features_wtf) is not list:
-            features = [bandpower_features_wtf] + features
-            bandpower_features_wtf = np.concatenate(features,axis=1)
-        else:
-            bandpower_features_wtf = np.concatenate(tuple(features),axis=1)
-
-    # Get rest of features
-    bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
-    bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
-    # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
-    # hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
-    # hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(data)
-
-    # LZC_features = ml_model.MLModel.LZC(data)
-    # DFA_features = ml_model.MLModel.DFA(data)
-    bandpower_features_wtf = np.concatenate((csp_features,bandpower_features_wtf, bandpower_features_new, bandpower_features_rel), axis=1)
-    problem = SVMFeatureSelection(bandpower_features_wtf,labels)
+    data, baseline = baseline_extractor(data, fs)
+    bandpower_features_wtf, baseline_features = get_features_with_baseline(data, baseline, labels, fs)
+    bandpower_features_wtf = np.divide(bandpower_features_wtf, baseline_features)
+    # feature extraction
+    problem = SVMFeatureSelection(bandpower_features_wtf, labels)
     task = Task(problem, max_iters=100)
     algorithm = ParticleSwarmOptimization()
     best_features, best_fitness = algorithm.run(task)
     best_features_index = [ind for ind, feature in enumerate(best_features) if (feature > 0.5)]
     bandpower_features_wtf = bandpower_features_wtf.T[best_features > 0.5].T
-
+    # normalization
     scaler = StandardScaler()
     scaler.fit(bandpower_features_wtf)
     bandpower_features_wtf = scaler.transform(bandpower_features_wtf)
@@ -790,7 +858,10 @@ def concat_all_recordings(target_dir):
         all_labels = np.concatenate((all_labels,temp_labels),axis=0) if type(all_trials) == np.ndarray else temp_labels
     return all_trials, all_labels
 
-
+def baseline_extractor(data, fs):
+    baseline = data[:, :, :fs]
+    data = data[:, :, fs::]
+    return data, baseline
 
 
 if __name__ == '__main__':
