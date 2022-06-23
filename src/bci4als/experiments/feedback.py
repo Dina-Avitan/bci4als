@@ -64,6 +64,7 @@ class Feedback:
             'tongue': os.path.join(os.path.dirname(__file__), 'images', 'tongue.jpeg'),
             'hands': os.path.join(os.path.dirname(__file__), 'images', 'hands.jpeg')}
         self.enum_image = {0: 'right', 1: 'left', 2: 'idle', 3: 'tongue', 4: 'hands'}
+        self.black_screen_path = os.path.join(os.path.dirname(__file__), 'images', 'black_screen.jpeg')
 
         # Progress bars params
         self.bar: Bar = Bar(pos=(0, -0.5), line_size=(0.01, 0.4), frame_size=(1.9, 0.2),
