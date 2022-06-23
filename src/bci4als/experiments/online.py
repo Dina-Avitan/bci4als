@@ -199,7 +199,7 @@ class OnlineExperiment(Experiment):
                 feedback.update(predict_stim=prediction, skip=skip_bool, progress_criteria=self.threshold)
 
             if self.mode == 'test':
-                num_tries += 1 
+                num_tries += 1
                 # Update the feedback according the prediction
                 feedback.update(predict_stim=prediction, skip=(num_tries >= self.skip_after), progress_criteria=self.skip_after)
 
@@ -232,7 +232,14 @@ class OnlineExperiment(Experiment):
         # For each stim in the trials list
         for ind_stim, stim in enumerate(self.labels):
             # Init feedback instance
+            # TODO: create a black screen feedback in the  baseline recording (the first 1 sec)
+            # if ind_stim != 0:
+            #     print('Roy is a fool!!!')
+            #     print(feedback.black_screen_path)
+            #     feedback.img_stim = visual.ImageStim(feedback.win, image=feedback.black_screen_path)
+            #     feedback.img_stim.draw()
             time.sleep(1)  # sleep for baseline features
+
             feedback = Feedback(self.win, stim, self.buffer_time, self.skip_after)
 
             # Use different thread for online learning of the model
