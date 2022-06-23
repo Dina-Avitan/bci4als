@@ -142,6 +142,7 @@ class OfflineExperiment(Experiment):
 
         # Draw and push marker
         self.eeg.insert_marker(status='start', label=self.labels[trial_index], index=trial_index)
+        time.sleep(1)  # sleep for baseline features
         self.window_params[trial_img].draw()
         win.flip()
 

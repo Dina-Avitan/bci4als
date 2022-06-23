@@ -1,6 +1,7 @@
 import os
 import random
 import sys
+import time
 from datetime import datetime
 from tkinter import messagebox
 from tkinter.filedialog import askdirectory
@@ -31,7 +32,7 @@ class Experiment:
 
         #     labels
         self.labels = []
-        self.keys= keys
+        self.keys = keys
         self._init_labels()
 
     def run(self):
@@ -91,7 +92,6 @@ class Experiment:
         2. wait for user's key-press
         3. Empty the EEG board
         """
-
         # Show empty feedback
         feedback.display(0,next_stim=next_stim,audio_next_pathes=audio_next_pathes,stim_sound=stim_sound)
 
@@ -101,7 +101,6 @@ class Experiment:
         # Empty the board
         if use_eeg:
             eeg.clear_board()
-
     @staticmethod
     def get_keypress():
         """

@@ -62,12 +62,11 @@ class GUI_offline:
             classes_list = [int(i) for i in classes]
             self.rec_params = {
                 'use_synthetic': self.use_synthetic.get(),
-                'subject_name': self.entry_name.get(),
                 'classes_keys': classes_list,
                 'num_trials': int(self.entry_trials.get()),
                 'trial_length': int(self.entry_trial_length.get()),
                 'stim_sound': self.use_sound.get()
-            }
+            }#'subject_name': self.entry_name.get(),
             self.win.destroy()  # close the window
 
         Button(self.win, text="submit", command=get_valid_data).place(relx=.5, rely=.8)

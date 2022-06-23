@@ -141,7 +141,6 @@ class OnlineExperiment(Experiment):
 
             # Get data and channes from EEG
             data = copy.deepcopy(self.eeg.get_channels_data())
-
             # get data into epochs and filter it
             ch_names = self.eeg.get_board_names()
             # [ch_names.remove(bad_ch) for bad_ch in self.model.channel_removed if bad_ch in ch_names]
@@ -200,7 +199,7 @@ class OnlineExperiment(Experiment):
                 feedback.update(predict_stim=prediction, skip=skip_bool, progress_criteria=self.threshold)
 
             if self.mode == 'test':
-                num_tries += 1 #TODO: insert stop stimolus - noam.a make sure the reccording stop too
+                num_tries += 1 
                 # Update the feedback according the prediction
                 feedback.update(predict_stim=prediction, skip=(num_tries >= self.skip_after), progress_criteria=self.skip_after)
 
@@ -232,8 +231,8 @@ class OnlineExperiment(Experiment):
 
         # For each stim in the trials list
         for ind_stim, stim in enumerate(self.labels):
-
             # Init feedback instance
+            time.sleep(1)  # sleep for baseline features
             feedback = Feedback(self.win, stim, self.buffer_time, self.skip_after)
 
             # Use different thread for online learning of the model
@@ -243,9 +242,9 @@ class OnlineExperiment(Experiment):
             # Maintain visual feedback on screen
             timer = core.Clock()
 
-            num_first_stim = -1 # for the first stim to be heard
+            num_first_stim = -1  # for the first stim to be heard
             while not feedback.stop:
-                num_first_stim +=1
+                num_first_stim += 1
                 feedback.display(current_time=timer.getTime())
                 if ind_stim == 0 and num_first_stim == 0: # for the first stim to be heard ( the other appears in "feedback.display" func)
                     if self.stim_sound:
