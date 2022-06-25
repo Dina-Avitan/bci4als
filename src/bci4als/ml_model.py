@@ -39,7 +39,7 @@ class MLModel:
         a formatted string to print out what the animal says
     """
 
-    def __init__(self, trials: List[pd.DataFrame], labels: List[int], channel_removed:List[str]):
+    def __init__(self, trials: List[pd.DataFrame], labels: List[int], channel_removed:List[str], reference_to_baseline=0):
 
         self.trials: List[NDArray] = [t.to_numpy().T for t in trials]
         self.labels: List[int] = labels
@@ -54,14 +54,10 @@ class MLModel:
         self.ica = ICA(n_components=11, max_iter='auto', random_state=97)
         self.csp_space = []
         self.bands = []
-        self.reference_to_baseline = 0  # 0=no reference. positive int for length of baseline recording
+        self.reference_to_baseline = reference_to_baseline  # 0=no reference. positive int for length of baseline recording
 
-    def offline_training(self, model_type: str = 'simple_svm', reference_to_baseline=0):
+    def offline_training(self, model_type: str = 'simple_svm'):
         if model_type.lower() == 'simple_svm':
-            try:
-                self.reference_to_baseline = reference_to_baseline
-            except AttributeError as err:
-                pass
             self._simple_svm()
 
         else:

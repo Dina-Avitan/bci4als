@@ -38,7 +38,7 @@ def offline_experiment(pygame_gui_folder_path=0,pygame_gui_keys=0,advanced_gui =
                                 audio=False, keys=(0,1,2), baseline_length=1)
     trials, labels = exp.run()
     session_directory = exp.session_directory
-    unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])
+    unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[], reference_to_baseline=1)
     unfiltered_model.epochs_extractor(copy.deepcopy(eeg))
     pickle.dump(unfiltered_model, open(os.path.join(session_directory, 'model.pickle'), 'wb'))
     print('Finish!!')
