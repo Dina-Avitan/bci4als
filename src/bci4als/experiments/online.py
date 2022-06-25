@@ -51,7 +51,7 @@ class OnlineExperiment(Experiment):
 
     def __init__(self, eeg: EEG, model: MLModel, num_trials: int,
                  buffer_time: float, threshold: int, co_learning: bool,skip_after: Union[bool, int] = False,
-                 debug=False, mode='practice',stim_sound = False,keys=(0,1,2)):
+                 debug=False, mode='practice',stim_sound = False,keys=(0,1,2), baseline_length=0):
 
         super().__init__(eeg, num_trials,keys)
         # experiment params
@@ -92,6 +92,8 @@ class OnlineExperiment(Experiment):
         self.results = []
         # for labeling the predictions
         self.stack_order = dict([(keys[i],i) for i in range(len(keys))])
+        # Parameter for referencing in respect to a baseline
+        self.baseline_length = baseline_length  # in seconds. 0=no baseline.
 
     @staticmethod
     def ask_model_directory():
@@ -135,29 +137,46 @@ class OnlineExperiment(Experiment):
         while not feedback.stop:
             # increase num_tries by 1
             print(f"num tries {num_tries}")
-
             # Sleep until the buffer full
             time.sleep(max(0, self.buffer_time - timer.getTime()))
 
-            # Get data and channes from EEG
-            data = copy.deepcopy(self.eeg.get_channels_data())
-            # get data into epochs and filter it
-            ch_names = self.eeg.get_board_names()
-            # [ch_names.remove(bad_ch) for bad_ch in self.model.channel_removed if bad_ch in ch_names]
-            ch_types = ['eeg'] * len(ch_names)
+            # Parameters
             sfreq: int = self.eeg.sfreq
+            ch_names = self.eeg.get_board_names()
+            ch_types = ['eeg'] * len(ch_names)
+
+            # Get data and channels from EEG
+            data = copy.deepcopy(self.eeg.get_channels_data())
+            if (num_tries > 0 or threshold_skip > 0) and self.baseline_length:
+                # we need to append the baseline we sampled only in the first mini-trial
+                print(data.shape)
+                print(baseline.shape)
+                data = np.concatenate((np.squeeze(baseline), data), axis=1)
+                print(data.shape)
+            # Prepare data for transformation to mne.Epoch object
             info = mne.create_info(ch_names, sfreq, ch_types)
-            n_samples: int = min([t.shape[0] for t in data])  # get the minimum length of each elec
+            # Massage the data to fit the model size
             epochs_array: np.ndarray = (np.stack([t[:self.model.epochs.get_data().shape[2]] for t in data]))[np.newaxis]  # make the elecs same size
             # Get epochs object for prediction and another one for adding it to the data
             epochs = mne.EpochsArray(epochs_array, info)
+            # Preprocessing
             epochs.filter(1., 40., fir_design='firwin', skip_by_annotation='edge', verbose=False)
-            # Make two epoch objects: one for prediction(will go ICA and laplace) and one for adding to data
+            # Make two epoch objects: one for prediction and one for adding to data Because we dont want
+            # filters on the raw data that we will be adding to the model.
             epochs_pred = copy.deepcopy(epochs)
             # Apply ICA
             epochs_pred = self.model.ica.apply(epochs_pred)
             # LaPlacian filter
-            data, _ = self.eeg.laplacian(epochs_pred.get_data())
+            data_for_prediction, _ = self.eeg.laplacian(epochs_pred.get_data())
+            # Separate the prediction object into data and baseline (only if num_tries is 0).
+
+            # Because we sample the baseline once, we need to keep it throughout every "mini-trial" within each trial
+            # If skip_after param is 0, this problem does not exist.
+            if num_tries == 0:
+                data_for_prediction, baseline = MLModel.baseline_extractor(data=data_for_prediction, fs=sfreq, baseline_length=self.baseline_length)
+            else:
+                pass
+
             # Predict the class
             if self.debug:
                 # in debug mode, be correct 2/3 of the time and incorrect 1/3 of the time.
@@ -165,7 +184,8 @@ class OnlineExperiment(Experiment):
             else:
                 # in normal mode, use the loaded model to make a prediction
                 # squeeze is a plaster. you can later remove all the newaxis fom online predict
-                prediction, test_features = self.model.online_predict(np.squeeze(epochs_pred.get_data()), eeg=self.eeg)
+                prediction, test_features = self.model.online_predict(data=data_for_prediction, eeg=self.eeg,
+                                                                      baseline=baseline)
                 prediction = int(prediction)
 
             # play sound if successful
@@ -176,7 +196,7 @@ class OnlineExperiment(Experiment):
                     rand = random.randint(1, self.num_of_success_sounds)
                     playsound.playsound(self.audio_success_path[rand])
 
-            if self.co_learning:# and prediction == stim:  # maybe prediction doesnt have to be == stim
+            if self.co_learning:
                 self.batch_stack[self.stack_order[stim]].append(np.squeeze(epochs.get_data()))
                 if all(self.batch_stack):
                     data_batched = [data_stack.pop(0) for data_stack in self.batch_stack]
@@ -238,7 +258,7 @@ class OnlineExperiment(Experiment):
             #     print(feedback.black_screen_path)
             #     feedback.img_stim = visual.ImageStim(feedback.win, image=feedback.black_screen_path)
             #     feedback.img_stim.draw()
-            time.sleep(1)  # sleep for baseline features
+            time.sleep(self.baseline_length)  # sleep for baseline features
 
             feedback = Feedback(self.win, stim, self.buffer_time, self.skip_after)
 

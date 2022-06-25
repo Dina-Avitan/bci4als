@@ -54,13 +54,14 @@ class MLModel:
         self.ica = ICA(n_components=11, max_iter='auto', random_state=97)
         self.csp_space = []
         self.bands = []
+        self.reference_to_baseline = 0  # 0=no reference. positive int for length of baseline recording
 
-    def offline_training(self, model_type: str = 'csp_lda'):
-
-        if model_type.lower() == 'csp_lda':
-            self._csp_lda()
-
-        elif model_type.lower() == 'simple_svm':
+    def offline_training(self, model_type: str = 'simple_svm', reference_to_baseline=0):
+        if model_type.lower() == 'simple_svm':
+            try:
+                self.reference_to_baseline = reference_to_baseline
+            except AttributeError as err:
+                pass
             self._simple_svm()
 
         else:
@@ -104,12 +105,27 @@ class MLModel:
         data = self.ica.apply(data).get_data()
         # Laplacian
         data, _ = EEG.laplacian(data)
-        # # Get CSP features
-        csp = CSP(n_components=2, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
-                  cov_est='epoch')
-        self.csp_space = Pipeline(
-            [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
+        # If reference to baseline is activated
+        if self.reference_to_baseline:
+            data, baseline = self.baseline_extractor(data=data, fs=fs, baseline_length=self.reference_to_baseline)
+            # Get csp_space only for the data and extract features from the baseline
+            csp = CSP(n_components=2, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+                      cov_est='epoch')
+            self.csp_space = Pipeline(
+                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
 
+            # Get baseline features
+            baseline_csp = self.csp_space.transform(baseline)
+            baseline_bp = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=False)
+            baseline_bp_rel = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=True)
+            baseline_features = np.concatenate((baseline_csp, baseline_bp, baseline_bp_rel), axis=1)
+        else:
+            csp = CSP(n_components=2, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
+                      cov_est='epoch')
+            self.csp_space = Pipeline(
+                [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
+
+        # # Get CSP features
         csp_features = self.csp_space.transform(data)
         # new csp
         # csp_features = []
@@ -132,11 +148,12 @@ class MLModel:
         #         csp_features = np.concatenate(tuple(features), axis=1)
 
         # Extract spectral features
-        # Get features
         bandpower_features = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=True)
 
         self.features_mat = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=1)
+        # Reference the features in respect to the baseline if baseline reference is activated
+        self.features_mat = np.divide(self.features_mat, baseline_features) if self.reference_to_baseline else self.features_mat
         # Normalize
         self.scaler.fit(self.features_mat)
         self.features_mat = self.scaler.transform(self.features_mat)
@@ -169,16 +186,14 @@ class MLModel:
         to_remove += add_remove
         feature_mat = np.delete(feature_mat, to_remove, axis=0)
         labels = np.delete(labels, to_remove, axis=0)
-        print("trial rejected")
-        print(to_remove)
-        print("trial rejected")
+        print(f"trial rejected: {to_remove}")
         return feature_mat, labels, to_remove
 
-    def online_predict(self, data: NDArray, eeg: EEG):
+    def online_predict(self, data: NDArray, eeg: EEG, baseline=NDArray):
         # Prepare parameters
         fs = eeg.sfreq
         # Get features
-        csp_features = self.csp_space.transform(data[np.newaxis])[0]  # old
+        csp_features = self.csp_space.transform(data)  # old
         # new csp
         # csp_features = []
         # for ind, i in enumerate(self.bands):
@@ -196,10 +211,19 @@ class MLModel:
         #         csp_features = np.concatenate(tuple(features), axis=0)
 
         #Spectral features
-        bandpower_features = self.bandpower(data[np.newaxis], self.bands, fs, window_sec=0.5, relative=False)
-        bandpower_features_rel = self.bandpower(data[np.newaxis], self.bands, fs, window_sec=0.5, relative=True)
+        bandpower_features = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=False)
+        bandpower_features_rel = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=True)
+        # Get baseline features
+        if baseline.shape[-1]:
+            baseline_csp = self.csp_space.transform(baseline)
+            baseline_bp = self.bandpower(baseline, self.bands, fs, window_sec=0.5, relative=False)
+            baseline_bp_rel = self.bandpower(baseline, self.bands, fs, window_sec=0.5, relative=True)
+            baseline_features_mat = np.concatenate((np.squeeze(baseline_csp), baseline_bp, baseline_bp_rel), axis=0)
+
         # combine features
-        features_mat_test = np.concatenate((csp_features, bandpower_features_rel, bandpower_features), axis=0)
+        features_mat_test = np.concatenate((np.squeeze(csp_features), bandpower_features, bandpower_features_rel), axis=0)
+        # re-reference features in respect to baseline - (features)/(baseline_features) - element-wise
+        features_mat_test = np.divide(features_mat_test, baseline_features_mat) if baseline.shape[-1] else features_mat_test
         # Normalize
         features_mat_test = self.scaler.transform(features_mat_test[numpy.newaxis])
         # Predict
@@ -546,3 +570,9 @@ class MLModel:
                 dfa_per_epoch = np.vstack((dfa_per_epoch, dfa_per_elec))
             dfa_per_elec = []
         return dfa_per_epoch
+
+    @staticmethod
+    def baseline_extractor(data, fs, baseline_length):
+        baseline = data[:, :, :int(fs*baseline_length)]
+        data = data[:, :, int(fs*baseline_length)::]
+        return data, baseline

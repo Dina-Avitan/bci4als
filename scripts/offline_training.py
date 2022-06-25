@@ -30,9 +30,12 @@ def offline_experiment(pygame_gui_folder_path=0,pygame_gui_keys=0,advanced_gui =
     eeg = EEG(board_id=data_type, config_json_converted=configurations)
     if advanced_gui:
         exp = OfflineExperiment(eeg=eeg, num_trials=advanced_gui['num_trials'], trial_length=advanced_gui['trial_length'], pygame_gui_folder_path=pygame_gui_folder_path,
-                                pygame_gui_keys=pygame_gui_keys, full_screen=True, audio=False, keys=advanced_gui['classes_keys'])
+                                pygame_gui_keys=pygame_gui_keys, full_screen=True, audio=False,
+                                keys=advanced_gui['classes_keys'], baseline_length=1)
     else:
-        exp = OfflineExperiment(eeg=eeg, num_trials=27, trial_length=5, pygame_gui_folder_path=pygame_gui_folder_path, pygame_gui_keys=pygame_gui_keys, full_screen=True, audio=False,keys=(0,1,2))
+        exp = OfflineExperiment(eeg=eeg, num_trials=27, trial_length=5, pygame_gui_folder_path=pygame_gui_folder_path,
+                                pygame_gui_keys=pygame_gui_keys, full_screen=True,
+                                audio=False, keys=(0,1,2), baseline_length=1)
     trials, labels = exp.run()
     session_directory = exp.session_directory
     unfiltered_model = MLModel(trials=trials, labels=labels, channel_removed=[])

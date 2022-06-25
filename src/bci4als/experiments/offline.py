@@ -19,7 +19,7 @@ class OfflineExperiment(Experiment):
 
     def __init__(self, eeg: EEG, num_trials: int, trial_length: float,pygame_gui_folder_path,pygame_gui_keys,
                  next_length: float = 1, cue_length: float = 0.25, ready_length: float = 1,
-                 full_screen: bool = False, audio: bool = False,keys=(0,1,2)):
+                 full_screen: bool = False, audio: bool = False,keys=(0,1,2), baseline_length=0):
 
         if pygame_gui_keys:
             keys = pygame_gui_keys
@@ -34,6 +34,7 @@ class OfflineExperiment(Experiment):
         self.next_length: float = next_length
         self.ready_length: float = ready_length
         self.trial_length: float = trial_length
+        self.baseline_length: int = baseline_length
 
         # paths
         self.gui_folder_path = pygame_gui_folder_path
@@ -142,7 +143,7 @@ class OfflineExperiment(Experiment):
 
         # Draw and push marker
         self.eeg.insert_marker(status='start', label=self.labels[trial_index], index=trial_index)
-        time.sleep(1)  # sleep for baseline features
+        time.sleep(self.baseline_length)  # sleep for baseline features
         self.window_params[trial_img].draw()
         win.flip()
 

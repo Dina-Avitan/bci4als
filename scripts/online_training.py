@@ -13,7 +13,7 @@ def run_experiment(advanced_gui={}):
     # re-fit model? (recommended)
     re_fit = True
     if re_fit:
-        model.offline_training(model_type='simple_svm')
+        model.offline_training(model_type='simple_svm', reference_to_baseline=1)
 
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2
@@ -42,10 +42,11 @@ def run_experiment(advanced_gui={}):
         exp = OnlineExperiment(eeg=eeg, model=model, num_trials=advanced_gui['num_trials'],
                                buffer_time=advanced_gui['trial_length'], threshold=2,
                                skip_after=advanced_gui['skip_after'], co_learning=True, debug=False,
-                               mode='test', stim_sound=False, keys=advanced_gui['classes_keys'])
+                               mode='test', stim_sound=False, keys=advanced_gui['classes_keys'], baseline_length=1)
     else:
         exp = OnlineExperiment(eeg=eeg, model=model, num_trials=9, buffer_time=5, threshold=2, skip_after=1,
-                               co_learning=True, debug=False, mode='test', stim_sound=False, keys=(0, 1, 2))
+                               co_learning=True, debug=False, mode='test', stim_sound=False,
+                               keys=(0, 1, 2), baseline_length=1)
 
 
     exp.run(use_eeg=True, full_screen=True)
