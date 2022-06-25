@@ -92,6 +92,10 @@ class OnlineExperiment(Experiment):
         self.results = []
         # for labeling the predictions
         self.stack_order = dict([(keys[i],i) for i in range(len(keys))])
+        # checking that baseline length matches the baseline length of loaded model
+        if model.reference_to_baseline != baseline_length:
+            print(f"Error: The baseline length you entered: {baseline_length} should match the baseline length of the model: {model.reference_to_baseline}")
+            sys.exit(-1)
         # Parameter for referencing in respect to a baseline
         self.baseline_length = baseline_length  # in seconds. 0=no baseline.
 

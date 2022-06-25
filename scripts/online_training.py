@@ -13,7 +13,7 @@ def run_experiment(advanced_gui={}):
     # re-fit model? (recommended)
     re_fit = True
     if re_fit:
-        model.offline_training(model_type='simple_svm', reference_to_baseline=1)
+        model.offline_training(model_type='simple_svm')
 
     SYNTHETIC_BOARD = -1
     CYTON_DAISY = 2

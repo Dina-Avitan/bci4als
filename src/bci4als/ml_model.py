@@ -101,6 +101,11 @@ class MLModel:
         data = self.ica.apply(data).get_data()
         # Laplacian
         data, _ = EEG.laplacian(data)
+        # For early models that did not have this field
+        try:
+            self.reference_to_baseline
+        except AttributeError as err:
+            self.reference_to_baseline = 0
         # If reference to baseline is activated
         if self.reference_to_baseline:
             data, baseline = self.baseline_extractor(data=data, fs=fs, baseline_length=self.reference_to_baseline)
