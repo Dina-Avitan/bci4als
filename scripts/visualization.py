@@ -165,6 +165,30 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
         spec_dict['f'] = f
     plot_spectrogram(spec_dict,elec)
 
+def create_spectrogram_raw(all_data,labels,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125,scaling = 'spectrum'):
+    sr = 125
+    elec = ('C4',elec)
+    spec_dict ={}
+    for i_spec in range(4):
+        if i_spec < 3:
+            indices = [i for i in range(len(labels)) if labels[i] == i_spec]
+            data = all_data[indices,:,:]
+            f,t,Sxx = scipy.signal.spectrogram(data,  sr, window=str(nwindow), noverlap=noverlap, nperseg=nperseg,nfft=nfft,scaling=scaling)
+            spec_dict[str(i_spec)] = np.ndarray.mean(Sxx, axis=0)
+        else:
+            indices_right = [i for i in range(len(labels)) if labels[i] == 0]
+            indices_left = [i for i in range(len(labels)) if labels[i] == 1]
+            data_right = all_data[indices_right,:,:]
+            data_left = all_data[indices_left,:,:]
+            f, t, Sxx_rigt = scipy.signal.spectrogram(data_right, sr, window=str(nwindow), noverlap=noverlap, nperseg=nperseg,nfft=nfft)
+            f, t, Sxx_left = scipy.signal.spectrogram(data_left,  sr, window=str(nwindow), noverlap=noverlap, nperseg=nperseg,nfft=nfft)
+            mean_right = np.ndarray.mean(Sxx_rigt, axis=0)
+            mean_left = np.ndarray.mean(Sxx_left, axis=0)
+            spec_dict[str(i_spec)] = abs(mean_right-mean_left)
+        spec_dict['t'] = t
+        spec_dict['f'] = f
+    plot_spectrogram(spec_dict,elec)
+
 def plot_spectrogram(spec_dict,elec):
     class_name = ['Right', 'Left', 'Idle','Right-Left diff']
     fig, axs = plt.subplots(2, 2, sharex=True, sharey=True)
@@ -396,11 +420,12 @@ def plot_online_results(path):
     ax.yaxis.set_ticklabels(labels)
     plt.show()
 
-plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\9\results.json')
-data = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\12\trained_model.pickle')
-trials = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\4\trials.pickle')
+
+# plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\9\results.json')
+# data = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\12\trained_model.pickle')
+# trials = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\4\trials.pickle')
 # data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
-# raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
+raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
 # #
 #epochs_to_raw(data2.epochs)
 # create_spectrogram(data2)
@@ -412,8 +437,8 @@ mne.viz.set_browser_backend('qt')
 """
 
 
-features_mat, class_lables, features_lables = get_feature_mat(data2)
-histo_histo(features_mat, class_lables, features_lables)
+# features_mat, class_lables, features_lables = get_feature_mat(data2)
+# histo_histo(features_mat, class_lables, features_lables)
 
 """
 from datetime import date

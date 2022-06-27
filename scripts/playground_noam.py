@@ -37,7 +37,8 @@ from xgboost import XGBClassifier
 from mne.preprocessing import ICA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import json
-
+import os
+from visualization import create_spectrogram_raw, plot_spectrogram
 
 def playground():
     # load eeg data
@@ -487,12 +488,55 @@ def plot_calssifiers(datasets):
     plt.savefig("High resoltion.png", dpi=300)
     plt.show()
 
+def concat_all_recordings(target_dir):
+    strip_func = lambda x: os.path.dirname(x)
+    curr_dir = os.getcwd()
+    recording_dir = strip_func(curr_dir) + r'\bci4als\recordings' + target_dir
+    files_in_recording_dir = os.listdir(recording_dir)
+    all_trials = []
+    all_labels = []
+    for date_name in files_in_recording_dir:
+        no_model_found = False
+        temp_path = os.path.join(recording_dir, date_name)
+        while True:
+            try:
+                temp_model = pd.read_pickle(os.path.join(temp_path, 'pre_laplacian.pickle'))
+                break
+            except FileNotFoundError:
+                try:
+                    temp_model = pd.read_pickle(os.path.join(temp_path,'trained_model.pickle'))
+                    break
+                except FileNotFoundError:
+                    try:
+                        temp_model = pd.read_pickle(os.path.join(temp_path, 'model.pickle'))
+                        break
+                    except FileNotFoundError:
+                        no_model_found = True
+                        break
+        if no_model_found:
+            continue
+        temp_trials = temp_model.epochs.get_data()
+        temp_labels = temp_model.labels
+        try:
+            all_trials = np.concatenate((all_trials,temp_trials),axis=0) if type(all_trials) == np.ndarray else temp_trials
+        except ValueError:
+            if np.size(all_trials,2) < np.size(temp_trials,2):
+                temp_trials = temp_trials[:, :, 0:np.size(all_trials, 2)]
+            else:
+                all_trials = all_trials[:,:,0:np.size(temp_trials,2)]
+            all_trials = np.concatenate((all_trials,temp_trials),axis=0) if type(all_trials) == np.ndarray else temp_trials
+        all_labels = np.concatenate((all_labels,temp_labels),axis=0) if type(all_trials) == np.ndarray else temp_labels
+    return all_trials, all_labels
+
 if __name__ == '__main__':
+    trials, labels = concat_all_recordings(r'\\all_recording_avi')
+    create_spectrogram_raw(trials, labels, elec=0)
+
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/56/pre_laplacian.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
     # playground()
-    load_eeg()
+    #load_eeg()
     # plot_calssifiers(datasets)
