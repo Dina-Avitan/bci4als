@@ -166,8 +166,9 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
     plot_spectrogram(spec_dict,elec)
 
 def create_spectrogram_raw(all_data,labels,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125,scaling = 'spectrum'):
+    all_elec = ['C3', 'C4', 'Cz', 'FC1', 'FC2', 'FC5', 'FC6', 'CP1', 'CP2', 'CP5', 'CP6'];
     sr = 125
-    elec = ('C4',elec)
+    elec = (all_elec[elec],elec)
     spec_dict ={}
     for i_spec in range(4):
         if i_spec < 3:
@@ -420,7 +421,7 @@ def plot_online_results(path):
     ax.yaxis.set_ticklabels(labels)
     plt.show()
 
-
+raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_right_left_idle\Offline_12_05_22-14_56_22\pre_laplacian.pickle')
 # plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\9\results.json')
 # data = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\12\trained_model.pickle')
 # trials = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\4\trials.pickle')
