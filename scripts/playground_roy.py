@@ -367,9 +367,9 @@ def load_eeg(path,data=None,labels=None, method=0):
 
     pred = []
     fs = 125
-    # bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
+    bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
     # bands = np.matrix([[i,i+2]for ind,i in enumerate(list(range(1,40))[:-2])])
-    bands = np.matrix([[4.0, 12.15], [32.0, 34.24], [23.0, 28.89], [37.0, 46.54], [4.0, 9.66], [29.0, 32.81], [39.0, 43.72], [39.0, 44.2], [33.0, 38.17], [33.0, 39.78], [4.0, 11.4], [31.0, 36.46], [31.0, 37.5], [11.0, 18.63], [1.0, 4.61], [33.0, 39.92], [37.0, 38.83], [4.0, 10.74], [32.0, 34.2], [23.0, 28.77], [37.0, 39.23], [33.0, 39.28], [38.0, 47.54], [0.0, 2.86], [21.0, 27.68]])
+    # bands = np.matrix([[4.0, 12.15], [32.0, 34.24], [23.0, 28.89], [37.0, 46.54], [4.0, 9.66], [29.0, 32.81], [39.0, 43.72], [39.0, 44.2], [33.0, 38.17], [33.0, 39.78], [4.0, 11.4], [31.0, 36.46], [31.0, 37.5], [11.0, 18.63], [1.0, 4.61], [33.0, 39.92], [37.0, 38.83], [4.0, 10.74], [32.0, 34.2], [23.0, 28.77], [37.0, 39.23], [33.0, 39.28], [38.0, 47.54], [0.0, 2.86], [21.0, 27.68]])
     # bands = '[28.34.64],[24.25.97],[21.23.85],[17.19.36],[38.40.05],[20.24.83],[34.39.69],[17.23.],[32.39.72],[38.42.76],[28.29.77],[38.38.97],[23.24.74],[10.12.92],[36.47.62],[22.33.14],[12.14.13],[14.17.42],[13.18.84],[26.27.9],[26.28.21],[26.28.13],[20.23.04],[35.39.26],[4.17.93],[25.27.21],[20.21.61],[8.10.85],[20.24.2],[10.11.28],[26.29.41],[12.17.79],[16.28.94],[1.2.77],[36.41.69],[1.6.69],[35.36.28],[37.39.35],[1.2.8],[3.4.98],[24.29.99],[13.17.35],[4.11.06],[23.30.76],[17.21.35],[8.11.88],[0.5.81],[24.28.92],[24.25.8],[37.40.54],[1.2.69],[24.28.7],[14.19.58],[24.29.88],[10.11.3],[21.22.24],[11.12.05],[15.17.21],[32.33.9],[35.36.12],[20.28.23],[3.6.49],[36.48.13],[3.6.6],[24.31.52],[17.21.83],[35.37.85],[25.26.05],[10.18.54],[28.30.95],[24.27.88],[35.36.97],[5.8.86],[25.29.7],[13.19.97],[37.40.88],[28.29.43],[0.6.06],[17.21.92],[38.39.7],[20.21.69],[33.39.81],[26.28.27],[7.11.86],[16.17.54],[1.2.7],[6.7.96],[32.33.99],[16.17.77],[32.34.21],[3.4.9],[20.22.99],[13.22.73],[35.38.8],[6.17.76],[34.41.06],[3.13.35],[5.7.43],[32.35.26],[16.17.83],[12.14.56],[14.17.7],[8.10.92],[0.5.88],[34.42.76],[8.15.78],[3.7.18],[6.9.88],[23.28.39],[33.44.14],[37.38.05],[16.25.41],[16.19.88],[37.38.45],[12.15.6],[29.35.76],[13.14.45],[13.17.27],[10.11.79],[2.4.13],[3.6.64],[23.28.29],[5.7.78],[1.9.69],[5.7.59],[3.5.61],[22.25.76],[28.29.54],[6.9.41],[6.11.99],[29.39.58],[27.36.49],[23.25.13],[3.5.56],[15.17.11],[39.49.35],[25.27.11],[32.41.4],[11.13.75],[26.31.29],[1.3.02],[1.6.84],[9.12.44],[8.10.64],[23.32.06],[33.34.09],[9.12.53],[25.27.4],[17.21.27],[20.25.39],[9.11.13],[14.17.48],[37.38.96],[10.14.86],[6.11.57],[16.17.48],[25.28.59],[12.14.61],[39.40.43],[10.12.09],[31.33.12],[25.27.46],[36.37.45],[39.44.84],[3.5.12],[38.42.23],[35.38.7],[28.29.24],[37.38.26],[14.18.8],[6.8.99],[9.12.14],[17.20.8],[5.7.32],[12.19.72],[19.20.61],[37.38.8],[8.11.59],[20.22.02],[28.29.83],[33.35.12],[32.33.47],[28.29.48],[33.35.13],[5.8.59],[4.5.43],[10.11.8],[22.28.64],[34.45.65],[9.11.64],[16.17.8],[17.23.97],[7.9.64],[20.24.88],[21.25.83],[21.30.73],[27.30.44],[5.9.74],[32.34.27],[26.27.99],[38.42.19],[12.23.14],[2.11.4],[5.10.84],[13.19.],[4.6.17],[27.30.86],[27.31.76],[4.6.99],[19.20.98],[7.9.99],[20.21.77],[21.27.64],[19.21.35],[15.17.4],[29.33.86],[3.9.81],[19.22.53],[25.27.53],[37.38.1],[37.39.98],[29.34.99],[15.17.53],[12.17.88],[12.16.18],[38.39.57]'
     #
     # # Ofir's data
@@ -412,7 +412,6 @@ def load_eeg(path,data=None,labels=None, method=0):
     #Laplacian
     data, _ = EEG.laplacian(data)
     data, labels = extract_2_labels(data, labels, [0,1,2])
-
     # pred, bands = band_hunter_swarm_algorithm(data, labels,fs)
     # bands = np.matrix(bands)
 
@@ -432,13 +431,13 @@ def load_eeg(path,data=None,labels=None, method=0):
         bandpower_features_wtf, baseline_features = get_features_with_baseline(data, baseline, labels, fs)
         bandpower_features_wtf = np.divide(bandpower_features_wtf, baseline_features)
 
-    # # feature selection
-    problem = SVMFeatureSelection(bandpower_features_wtf, labels)
-    task = Task(problem, max_iters=50)
-    algorithm = ParticleSwarmOptimization()
-    best_features, best_fitness = algorithm.run(task)
-    best_features_index = [ind for ind, feature in enumerate(best_features) if (feature > 0.5)]
-    bandpower_features_wtf = bandpower_features_wtf.T[best_features > 0.5].T
+    # # # feature selection
+    # problem = SVMFeatureSelection(bandpower_features_wtf, labels)
+    # task = Task(problem, max_iters=50)
+    # algorithm = ParticleSwarmOptimization()
+    # best_features, best_fitness = algorithm.run(task)
+    # best_features_index = [ind for ind, feature in enumerate(best_features) if (feature > 0.5)]
+    # bandpower_features_wtf = bandpower_features_wtf.T[best_features > 0.5].T
 
     # normalization
     scaler = StandardScaler()
@@ -474,27 +473,27 @@ def load_eeg(path,data=None,labels=None, method=0):
     pipeline_XGB = Pipeline([('classify', xgb_classifier)])
     pipeline_ADA = Pipeline([('classify', ada_classifier)])
     # get scores with CV for each pipeline
-    # scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    # scores_mix_pred = cross_val_predict(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix = cross_val_score(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix_pred = cross_val_predict(pipeline_SVM, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix2 = cross_val_score(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix_pred2 = cross_val_predict(pipeline_RF, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    # scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    # scores_mix_pred3 = cross_val_predict(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix3 = cross_val_score(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
+    scores_mix_pred3 = cross_val_predict(pipeline_MLP, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix4 = cross_val_score(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix_pred4 = cross_val_predict(pipeline_XGB, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix5 = cross_val_score(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
     scores_mix_pred5 = cross_val_predict(pipeline_ADA, bandpower_features_wtf, labels, cv=5, n_jobs=1)
-    values = [scores_mix2,scores_mix4,scores_mix5]
-    names = ['RandomForest','XGBC','ADA Boost']
+    values = [scores_mix, scores_mix2,scores_mix3, scores_mix4,scores_mix5]
+    names = ['SVM','NN','RandomForest','XGBC','ADA Boost']
     plt.bar(names, np.mean(values, axis=1))
     plt.suptitle(f'Classifiers prediction rate for method: {method}')
     plt.show()
 
 
     #print scores
-    # (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
+    (print(f"SVM rate is: {np.mean(scores_mix)*100}%"))
     (print(f"RandomForest rate is: {np.mean(scores_mix2)*100}%"))
-    # (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
+    (print(f"MLP rate is: {np.mean(scores_mix3)*100}%"))
     (print(f"XGBC rate is: {np.mean(scores_mix4)*100}%"))
     (print(f"ADA rate is: {np.mean(scores_mix5)*100}%"))
     plt.clf()
@@ -502,11 +501,11 @@ def load_eeg(path,data=None,labels=None, method=0):
     fontsize = 11
 
     # fit pipelines for the confusion matrix and get matrices
-    # mat1 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred,
-    #                         normalize='all')
-    # ax1 = fig.add_subplot(231)
-    # mat1.plot(ax=ax1,cmap=plt.cm.Blues)
-    # ax1.set_title('SVM', fontsize=fontsize, fontweight='bold')
+    mat1 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred,
+                            normalize='all')
+    ax1 = fig.add_subplot(231)
+    mat1.plot(ax=ax1,cmap=plt.cm.Blues)
+    ax1.set_title('SVM', fontsize=fontsize, fontweight='bold')
 
 
     mat2 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred2,
@@ -515,11 +514,11 @@ def load_eeg(path,data=None,labels=None, method=0):
     mat2.plot(ax =ax2,cmap=plt.cm.Blues)
     ax2.set_title('RF', fontsize=fontsize, fontweight='bold')
 
-    # mat3 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred3,
-    #                         normalize='all')
-    # ax3 = fig.add_subplot(233)
-    # mat3.plot(ax=ax3,cmap=plt.cm.Blues)
-    # ax3.set_title('MLP', fontsize=fontsize, fontweight='bold')
+    mat3 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred3,
+                            normalize='all')
+    ax3 = fig.add_subplot(233)
+    mat3.plot(ax=ax3,cmap=plt.cm.Blues)
+    ax3.set_title('MLP', fontsize=fontsize, fontweight='bold')
 
     mat4 = ConfusionMatrixDisplay.from_predictions(labels,scores_mix_pred4,
                             normalize='all')
@@ -863,22 +862,33 @@ def baseline_extractor(data, fs):
     data = data[:, :, fs::]
     return data, baseline
 
+def extract_2_labels(data, labels, classes_to_extract):
+        data_2_extract = [data[ind] for ind, label in enumerate(labels) if labels[ind] in classes_to_extract]
+        labels_2_extract = [label for ind, label in enumerate(labels) if labels[ind] in classes_to_extract]
+        return np.reshape(data_2_extract,[len(data_2_extract)] + list(data_2_extract[0].shape)), np.ravel(labels_2_extract)
+
+def save_as_mat(path, data, labels):
+    labels = {"labels": labels, "label": "experiment"}
+    data = {"data": data, "label": "experiment"}
+    scipy.io.savemat(path + r"\data.mat", labels)
+    scipy.io.savemat(path + r"\data.mat", data)
 
 if __name__ == '__main__':
     path = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_right_left_idle\Online_25_05_22-15_26_56'
-    trials, labels = concat_all_recordings(r'\all_recording_avi')
+    trials, labels = concat_all_recordings(r'\avi_right_left_idle')
+
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
     # model3 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/57/trained_model.pickle')
     # datasets = [get_feature_mat(model1)[0:2],get_feature_mat(model2)[0:2],get_feature_mat(model3)[0:2]]
-    method_dict = {'current_features':0}#, 'wacky_features_with_baseline':2}
-    results = []
-    bands = []
-    for method in method_dict:
-        temp_results, temp_bands = load_eeg(path+'/trained_model.pickle', data=trials,labels=labels, method=method)
-        results.append(temp_results)
-        bands.append(temp_bands)
+    # method_dict = {'current_features':0}#, 'wacky_features_with_baseline':2}
+    # results = []
+    # bands = []
+    # for method in method_dict:
+    #     temp_results, temp_bands = load_eeg(path+'/trained_model.pickle', data=trials,labels=labels, method=method)
+    #     results.append(temp_results)
+    #     bands.append(temp_bands)
     # plot_calssifiers(datasets)
     # import matplotlib.pyplot as plt
     # plot_online_results(path+'/results.json')
