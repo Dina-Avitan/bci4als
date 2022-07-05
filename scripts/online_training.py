@@ -24,7 +24,7 @@ def run_experiment(advanced_gui={}):
             data_type = SYNTHETIC_BOARD
         else:
             data_type = CYTON_DAISY
-
+    data_type = CYTON_DAISY
     # select buffer time
     # buffer_time = 5
     # if model.epochs.get_data()[0].shape[1]//125 != buffer_time:
@@ -44,7 +44,7 @@ def run_experiment(advanced_gui={}):
                                skip_after=advanced_gui['skip_after'], co_learning=True, debug=False,
                                mode='test', stim_sound=False, keys=advanced_gui['classes_keys'], baseline_length=1)
     else:
-        exp = OnlineExperiment(eeg=eeg, model=model, num_trials=9, buffer_time=5, threshold=2, skip_after=1,
+        exp = OnlineExperiment(eeg=eeg, model=model, num_trials=12, buffer_time=8, threshold=2, skip_after=1,
                                co_learning=True, debug=False, mode='test', stim_sound=False,
                                keys=(0, 1, 2), baseline_length=1)
 

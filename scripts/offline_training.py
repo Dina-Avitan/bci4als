@@ -20,7 +20,7 @@ def offline_experiment(pygame_gui_folder_path=0,pygame_gui_keys=0,advanced_gui =
             data_type = SYNTHETIC_BOARD
         else:
             data_type = CYTON_DAISY
-
+    data_type = CYTON_DAISY
     gain = {"1": 0, "2":  1, "4": 2, "6": 3, "8": 4, "12": 5, "24": 6}
     configurations = ''.join([''.join(f"x{str(i + 1)}0{gain['6']}0110X") for i in range(8)]
                              +

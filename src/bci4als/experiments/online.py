@@ -198,7 +198,7 @@ class OnlineExperiment(Experiment):
             if self.play_sound:
                 if prediction == stim:
                     rand = random.randint(1, self.num_of_success_sounds)
-                    playsound.playsound(self.audio_success_path[rand])
+                    playsound.playsound(self.audio_success_path[1])#(self.audio_success_path[rand])
 
             if self.co_learning:
                 self.batch_stack[self.stack_order[stim]].append(np.squeeze(epochs.get_data()))

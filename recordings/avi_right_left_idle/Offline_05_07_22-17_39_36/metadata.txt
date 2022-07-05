@@ -1,0 +1,24 @@
+Experiment datetime: 2022-07-05 17:39:36.767766
+
+EEG Channels:
+*************
+Channel 1: C3
+Channel 2: C4
+Channel 3: Cz
+Channel 4: FC1
+Channel 5: FC2
+Channel 6: FC5
+Channel 7: FC6
+Channel 8: CP1
+Channel 9: CP2
+Channel 10: CP5
+Channel 11: CP6
+
+Experiment Data
+***************
+Experiment Type: Offline
+Num of trials: 27
+Trials length: 5
+Cue length: 0.25
+Labels: right,left,idle
+Skip After: None
