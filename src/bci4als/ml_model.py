@@ -30,22 +30,31 @@ from numba import njit
 class MLModel:
     """
     A class used to wrap all the ML model train, partial train and predictions
-
-    ...
-
-    Attributes
-    ----------
-    trials : list
-        a formatted string to print out what the animal says
+    This is the essence of the ML side of the project. It contains all the features to be extracted
+    and pipeline for the ML.
+    The flow is like so:
+    offline recording -> * you can add another pipeline but for now theres only one (rf_bandpower)* ->
+    -> our pipeline (rf_bandpower).
+    after that, you created a MLMODEL object that you can save and use within the online script.
+    the important thing is self.clf field which contains the trained model that we will use for prediction
+    in the online_predict method
     """
 
     def __init__(self, trials: List[pd.DataFrame], labels: List[int], channel_removed:List[str], reference_to_baseline=0):
-
+        """
+        Constructor for the MLModel class
+        Args:
+            trials [list]: The trials in a list to be converted into ndarray in the constructor.
+            labels [list]: The labels for each trial.
+            channel_removed [list[str]]: decides which channels to be removed. we did not use it because we did not like
+                -> the idea of removing entire channels based on our analysis. Maybe someone else can find use to it.
+            reference_to_baseline [int]: default is 0. how many seconds you wish to record as baseline reference.
+                -> this will be used after feature extraction to enhance contrast between trials and baseline.
+        """
         self.trials: List[NDArray] = [t.to_numpy().T for t in trials]
         self.labels: List[int] = labels
         self.channel_removed: List[str] = channel_removed
         self.debug = True
-        self.clf = RandomForestClassifier()  # maybe make more dynamic to user
         self.features_mat = None
         self.epochs = None
         self.raw_trials = None
@@ -56,20 +65,36 @@ class MLModel:
         self.bands = []
         self.reference_to_baseline = reference_to_baseline  # 0=no reference. positive int for length of baseline recording
 
-    def offline_training(self, model_type: str = 'simple_svm'):
-        if model_type.lower() == 'simple_svm':
-            self._simple_svm()
+    def offline_training(self, model_type: str = 'rf_bandpower'):
+        """
+        This function decides the pipeline that the model will go through. we currently only use one. if you wish to
+            -> experiment with your own pipeline, you can add it here.
+        Args:
+            model_type: the name of the pipeline you wish your model will go through
+        """
+        if model_type.lower() == 'rf_bandpower':
+            self._rf_bandpower()
 
         else:
             raise NotImplementedError(f'The model type `{model_type}` is not implemented yet')
 
     def epochs_extractor(self, eeg: EEG):
+        """
+        This function is part of the pipeline. It uses the fields of the model to:
+        remove bad channels -> create mne.epochs object (for later use) using the trials and save it in self.epochs ->
+            -> filter the data -> fit ICA.
+        *fitting ICA means that we prepare a object that contains weights and bad components and receives data to
+        filter it using those weights and bad components. the idea is that we always save raw data in trials and
+        filtered data in epochs. we DO NOT use ica on our saved data. only as part of feature extraction and prediction
+        this enables us control over the data for analysis, so we can research on raw data.
+        Args:
+            eeg: EEG object. we use it to get channel names.
+        """
         # convert data to mne.Epochs
         ch_names = eeg.get_board_names()
         [ch_names.remove(bad_ch) for bad_ch in self.channel_removed if bad_ch in ch_names]
         ch_types = ['eeg'] * len(ch_names)
         sfreq: int = eeg.sfreq
-        print(eeg.sfreq)
         n_samples: int = min([t.shape[1] for t in self.trials])
         epochs_array: np.ndarray = np.stack([t[:, :n_samples] for t in self.trials])
         info = mne.create_info(ch_names, sfreq, ch_types)
@@ -87,9 +112,12 @@ class MLModel:
         self.ica.fit(epochs)
         self.ica.detect_artifacts(epochs)
 
-    def _simple_svm(self):
+    def _rf_bandpower(self):
         """
-        This function will re-learn the model's feature mat and clf object which represents the model itself
+        This function is the entire pipeline. It has parameters and hyper-parameters you can play with. we suggest
+        changing them only if you have good reason to believe you have better parameters. basically, it takes the epochs
+        and applies ICA, does Laplacian spatial filter, extract features, standardize them and reject outliers. then,
+        it saves inside self.clf the trained model over the current data, for online prediction.
         """
 
         # Set parameters
@@ -126,28 +154,8 @@ class MLModel:
             self.csp_space = Pipeline(
                 [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data, self.labels)
 
-        # # Get CSP features
+        # Get CSP features
         csp_features = self.csp_space.transform(data)
-        # new csp
-        # csp_features = []
-        # csp = CSP(n_components=2, reg='ledoit_wolf', norm_trace=False, transform_into='csp_space',
-        #           cov_est='epoch')
-        # for ind, i in enumerate(self.bands):
-        #     data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
-        #     self.csp_space.append(Pipeline(
-        #         [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit(data_mu, self.labels))
-        #     curr_space = self.csp_space[ind].transform(data_mu)
-        #     hjorthMobility_features = self.hjorthMobility(curr_space)
-        #     hjorthMobility_features2 = self.hjorthActivity(curr_space)
-        #     hjorthMobility_features3 = self.hjorthComplexity(curr_space)
-        #     LZC_features = self.LZC(curr_space)
-        #     features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
-        #     if type(csp_features) is not list:
-        #         features = [csp_features] + features
-        #         csp_features = np.concatenate(features, axis=1)
-        #     else:
-        #         csp_features = np.concatenate(tuple(features), axis=1)
-
         # Extract spectral features
         bandpower_features = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=True)
@@ -162,26 +170,31 @@ class MLModel:
         self.features_mat, self.labels, to_remove = self.trials_rejection(self.features_mat, self.labels)
         self.epochs.drop(to_remove)
         # pick classifier
-        clf = svm.SVC(decision_function_shape='ovo', kernel='linear')
         rf_classifier = RandomForestClassifier()
-        # Prepare Pipeline
-        mi_select = SelectKBest(mutual_info_classif, k=int(math.sqrt(self.features_mat.shape[0])))
-        model = SelectFromModel(LogisticRegression(C=1, penalty="l1", solver='liblinear', random_state=0))
-        seq_select_clf = SequentialFeatureSelector(clf, n_features_to_select=int(math.sqrt(self.features_mat.shape[0])), n_jobs=1)
         # Select pipeline
-        pipeline_SVM = Pipeline([('lasso', model), ('feat_selecting', seq_select_clf), ('SVM', clf)])
         pipeline_RF = Pipeline([('classify', rf_classifier)])
         # Initiate Pipeline for online classification
         self.clf = pipeline_RF.fit(self.features_mat, self.labels)
 
     @staticmethod
     def trials_rejection(feature_mat, labels):
+        """
+        Our outlier rejection method. It might be basic but we found it was very viable. It remove features with nans,
+        and features with above-threshold std.
+        we found that usually, specific features tend to return nans, and not specific trials. keep in mind that
+        specific feature correspond with specific channels so it makes sense.
+        Args:
+            feature_mat:
+            labels:
+
+        Returns: feature_mat, labels, to_remove. to_remove is a list with the index of the epochs to drop.
+        """
         to_remove = []
         nan_col = np.isnan(feature_mat).sum(axis=1)  # remove features with None values
         add_remove = np.where(np.in1d(nan_col, not 0))[0].tolist()
         to_remove += add_remove
 
-        func = lambda x: np.mean(np.abs(x),axis=1) > 1.2  # remove features with extreme values - 2 std over the mean
+        func = lambda x: np.mean(np.abs(x),axis=1) > 1.2  # remove features with extreme values - x std over the mean
         Z_bool = func(feature_mat)
         add_remove = np.where(np.in1d(Z_bool, not 0))[0].tolist()
         to_remove += add_remove
@@ -191,26 +204,17 @@ class MLModel:
         return feature_mat, labels, to_remove
 
     def online_predict(self, data: NDArray, eeg: EEG, baseline=NDArray):
+        """
+        This function receives the data from the online script. It will extract the same features and predict the label.
+        Args:
+            data: [ndarray] : online data. single trial.
+            eeg: EEG object.
+            baseline: [int]. amount of seconds that are the baseline.
+        """
         # Prepare parameters
         fs = eeg.sfreq
         # Get features
         csp_features = self.csp_space.transform(data)  # old
-        # new csp
-        # csp_features = []
-        # for ind, i in enumerate(self.bands):
-        #     data_mu = mne.filter.filter_data(copy.copy(data), fs, i[0, 0], i[0, 1])
-        #     curr_space = self.csp_space[ind].transform(data_mu[np.newaxis])
-        #     hjorthMobility_features = self.hjorthMobility(curr_space)
-        #     hjorthMobility_features2 = self.hjorthActivity(curr_space)
-        #     hjorthMobility_features3 = self.hjorthComplexity(curr_space)
-        #     LZC_features = self.LZC(curr_space)
-        #     features = [hjorthMobility_features, hjorthMobility_features2, hjorthMobility_features3, LZC_features]
-        #     if type(csp_features) is not list:
-        #         csp_features = np.concatenate([csp_features, np.concatenate(tuple(features), axis=0)],axis=0)
-        #     else:
-        #
-        #         csp_features = np.concatenate(tuple(features), axis=0)
-
         #Spectral features
         bandpower_features = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = self.bandpower(data, self.bands, fs, window_sec=0.5, relative=True)
@@ -223,15 +227,28 @@ class MLModel:
 
         # combine features
         features_mat_test = np.concatenate((np.squeeze(csp_features), bandpower_features, bandpower_features_rel), axis=0)
-        # re-reference features in respect to baseline - (features)/(baseline_features) - element-wise
+        # re-reference features in respect to baseline: (features)/(baseline_features) - element-wise
         features_mat_test = np.divide(features_mat_test, baseline_features_mat) if baseline.shape[-1] else features_mat_test
         # Normalize
         features_mat_test = self.scaler.transform(features_mat_test[numpy.newaxis])
         # Predict
         prediction = self.clf.predict(features_mat_test)
-        return prediction, features_mat_test
+        return prediction
 
     def partial_fit(self, X, y, epochs, sfreq):
+        """
+        This function receives the data from the online recording and concatenates it to the existing data, in a
+        stratified manner, to add the current data to the model. this is essentially known as co-adaptive learning.
+        It will then fit the model with the new data.
+        Args:
+            X: [list[ndarray]] a list that contains 3 recordings from each trial type(left/right/etc.)
+            y: [list[int]] a list that contains 3 labels from each trial
+            epochs: the epochs of those trials.
+            sfreq: the sample frequency rate.
+
+        Returns:
+
+        """
         # Append X to trials
         [self.trials.append(trial) for trial in X]
         # Append y to labels
@@ -243,15 +260,34 @@ class MLModel:
         info = mne.create_info(epochs.ch_names, sfreq, ch_types)
         temp_epoch = copy.deepcopy(self.epochs.get_data())
         for trial in X:
+            # band-aid for weird bug that sometimes causes the online recording to be slightly shorter than the offline model.
             while trial.shape[1] < temp_epoch.shape[2]:
-                trial = np.concatenate((trial,np.reshape(np.mean(trial[:,-10:-1],axis=1),[-1,1])),axis=1)  # bandaid for wierd bug that causes recording to be too short
+                trial = np.concatenate((trial,np.reshape(np.mean(trial[:,-10:-1],axis=1),[-1,1])),axis=1)
                 if trial.shape[1] == temp_epoch.shape[2]:
                     print("data recorded was too short. padding with mean to compensate")
             temp_epoch = np.concatenate((temp_epoch, trial[np.newaxis]))
         self.epochs = mne.EpochsArray(temp_epoch, info)
         del temp_epoch
         # update feature mat and fit model
-        self._simple_svm()
+        self._rf_bandpower()
+
+    @staticmethod
+    def baseline_extractor(data, fs, baseline_length):
+        """
+        This funciton extracts the baseline from the total recording
+        Args:
+            data [ndarray]: the whole data: baseline and then the recording together in a single ndarray.
+            fs [int]: sample frequency rate.
+            baseline_length [int]: the baseline length in seconds.
+
+        Returns: the baseline and the trial recording seperated. both in ndarrays.
+            data, baseline
+        """
+        baseline = data[:, :, :int(fs*baseline_length)]
+        data = data[:, :, int(fs*baseline_length)::]
+        return data, baseline
+
+    # From here downwards are features we used
 
     @staticmethod
     def bandpower(data, bands, sf, window_sec=None, relative=False):
@@ -571,9 +607,3 @@ class MLModel:
                 dfa_per_epoch = np.vstack((dfa_per_epoch, dfa_per_elec))
             dfa_per_elec = []
         return dfa_per_epoch
-
-    @staticmethod
-    def baseline_extractor(data, fs, baseline_length):
-        baseline = data[:, :, :int(fs*baseline_length)]
-        data = data[:, :, int(fs*baseline_length)::]
-        return data, baseline

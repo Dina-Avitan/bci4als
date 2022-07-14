@@ -188,7 +188,7 @@ class OnlineExperiment(Experiment):
             else:
                 # in normal mode, use the loaded model to make a prediction
                 # squeeze is a plaster. you can later remove all the newaxis fom online predict
-                prediction, test_features = self.model.online_predict(data=data_for_prediction, eeg=self.eeg,
+                prediction = self.model.online_predict(data=data_for_prediction, eeg=self.eeg,
                                                                       baseline=baseline)
                 prediction = int(prediction)
 
