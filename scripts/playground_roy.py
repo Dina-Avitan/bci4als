@@ -71,6 +71,8 @@ class SVMFeatureSelection(Problem):
         return self.alpha * score + (1 - self.alpha) * (num_selected / num_features)
 #import eeglib.eeg #steal features
 def load_eeg(path,data=None,labels=None, method='baseline'):
+    """This function is very very messy. its sole purpose is to be messy. It is meant to try and play with the data
+    and to test for different ideas. change it and use it as you wish."""
     def ICA_check(unfiltered_model):
         """
         This function is for visualization the ICA process and for choosing coordinates to exclude
@@ -114,6 +116,16 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
         ica.apply(epochs)
         return epochs
     def trials_rejection(feature_mat, labels):
+        """
+        Trial rejection, he same as the function in the MLMODEL, but he parameters here might be different
+        because we tried different std's.
+        Args:
+            feature_mat:
+            labels:
+
+        Returns:
+
+        """
         to_remove = []
         features_remove = []
         add_remove = list(set([column[1] for column in np.argwhere(np.isnan(feature_mat))]))
@@ -129,6 +141,17 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
         print(f'trials removed: {to_remove}')
         return feature_mat, labels
     def extract_2_labels(data, labels, classes_to_extract):
+        """
+        This function extracts the classes you choose from the given data
+        Args:
+            data: ndarrray of the data
+            labels: list of the labels
+            classes_to_extract: list[int[]] : a list of integers which represents the calsses in the daa you want
+            to extract
+
+        Returns:
+            data, labels (with only the desired classes)
+        """
         data_2_extract = [data[ind] for ind, label in enumerate(labels) if labels[ind] in classes_to_extract]
         labels_2_extract = [label for ind, label in enumerate(labels) if labels[ind] in classes_to_extract]
         return np.reshape(data_2_extract,[len(data_2_extract)] + list(data_2_extract[0].shape)), np.ravel(labels_2_extract)
@@ -253,6 +276,18 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
                 outfile.write(f'{bands_to_keep}')
         return max_pred, winning_band
     def get_features(data, labels, fs):
+        """
+        This funciton returns feature matrix containing most of the features that we assumed that made sense.
+        In the end of the day, it is slower and performs similarly to the minimalist version and requires feature
+        selection to outperform the minimalist features.
+        Args:
+            data: ndarrray of the data
+            labels: list of the labels
+            fs: frequency rate
+
+        Returns:
+            Features matrix in NDARRAY
+        """
         csp = CSP(n_components=2, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
         csp_features = Pipeline(
@@ -273,6 +308,7 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
             csp_feats = Pipeline(
             [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp_pwer)]).fit_transform(data_mu,
                                                                                                      labels)
+            # Get hjorth parameters from every csp space across every band
             hjorthMobility_features = ml_model.MLModel.hjorthMobility(csp_space)
             hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(csp_space)
             hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(csp_space)
@@ -284,24 +320,34 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
                 bandpower_features_wtf = np.concatenate(tuple(features), axis=1)
 
         # Get rest of features
+        # Get bandpower from the data in original space
         bandpower_features_new = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel = ml_model.MLModel.bandpower(data, bands, fs, window_sec=0.5, relative=True)
         csp_space = Pipeline(
             [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
                                                                                                      labels)
+        # Get bandpower from the data in csp space
         bandpower_features_new_csp = ml_model.MLModel.bandpower(csp_space, bands, fs, window_sec=0.5, relative=False)
         bandpower_features_rel_csp = ml_model.MLModel.bandpower(csp_space, bands, fs, window_sec=0.5, relative=True)
-        # hjorthMobility_features = ml_model.MLModel.hjorthMobility(data)
-        # hjorthMobility_features2 = ml_model.MLModel.hjorthActivity(data)
-        # hjorthMobility_features3 = ml_model.MLModel.hjorthComplexity(data)
-
-        # LZC_features = ml_model.MLModel.LZC(data)
-        # DFA_features = ml_model.MLModel.DFA(data)
         bandpower_features_wtf = np.concatenate(
             (csp_features, bandpower_features_wtf, bandpower_features_new, bandpower_features_rel,
              bandpower_features_new_csp, bandpower_features_rel_csp), axis=1)
         return bandpower_features_wtf
     def get_features_with_baseline(data,baseline,  labels, fs):
+        """
+        Extract the features in relation to the baseline. It essentially extracts the same features from both the
+        data sets and then divides the trial data by the baseline data. The idea is that this will make the effect
+        more significant. We did not have the chance to play with it too much but we found to improves the results
+        slightly
+        Args:
+            data: ndarrray of the data
+            baseline: ndarrray of the baseline
+            labels: list of the labels
+            fs: frequency rate
+
+        Returns:
+
+        """
         csp = CSP(n_components=3, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
         csp_features = Pipeline(
@@ -360,6 +406,17 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
             (csp_features_base, bandpower_features_new_base, bandpower_features_rel_base), axis=1)
         return data_features, baseline_features
     def get_current_features(data, labels, fs):
+        """
+        This function extracts the minimalist version of our features. Power over csp broadband (after .5-40 filter)
+        and bandpower over selected bands.
+        Args:
+            data: ndarrray of the data
+            labels: list of the labels
+            fs: frequency rate
+
+        Returns:
+
+        """
         csp = CSP(n_components=2, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
         csp_features = Pipeline(
@@ -552,7 +609,8 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
     print(bandpower_features_wtf.shape)
     return np.mean(values, axis=1), bands
 
-def get_feature_mat(model):
+def get_tsne_feature_mat(model):
+    """This function gets a model file and returns an dimension reduced(using tsne) features matrix and labels vector"""
     def ICA_perform(model):
         """
         Args:
@@ -629,6 +687,8 @@ def get_feature_mat(model):
     class_labels = labels
     return features_mat, class_labels, feature_labels
 def plot_SVM(feature_mat,labels):
+    """This function gets a features_mat and labels (it takes only the first 2 features for visualization) and
+    visualize SVM's performance on the dimension reduces(preferably) data"""
     h = .02  # step size in the mesh
     C = 1.0  # SVM regularization parameter
     feature_mat = feature_mat[:,:2]
@@ -652,6 +712,7 @@ def plot_SVM(feature_mat,labels):
     plt.title('SVC with linear kernel')
     plt.show()
 def plot_calssifiers(datasets):
+    """This function gets a data set and plots the performance of different classifiers over that dataset."""
     h = 0.02  # step size in the mesh
 
     names = [
@@ -769,6 +830,7 @@ def plot_calssifiers(datasets):
     plt.show()
 
 def plot_online_results(path):
+    """This function plots the online results of an online experiment using the path to the results file (json file)"""
     with open(path) as f:
         data = json.load(f)
     rep_on_class = len(data[0])
@@ -811,6 +873,9 @@ def plot_online_results(path):
     plt.show()
 
 def over_time_pred(recording_paths):
+    """This function visualize the prediction rate of a trial. The motivation was to check to facilitation in the
+    motor imagery paradigm as it was built when this function was written. f.e. it was meant to check if the prediciton
+    in the first mini-trial inside a certain class trial had better results than the third mini-trial."""
     tot_class = 0
     success_per_trial = [0] * 5
     for path_results in recording_paths:
@@ -828,6 +893,14 @@ def over_time_pred(recording_paths):
     plt.show()
 
 def concat_all_recordings(target_dir):
+    """
+    This function concatenates all the recordings in a given directory.
+    Args:
+        target_dir: string : path to the directory
+
+    Returns:
+        data, labels : of all the recordings in that directory
+    """
     strip_func = lambda x: os.path.dirname(x)
     curr_dir = os.getcwd()
     recording_dir = strip_func(curr_dir) + r'\recordings' + target_dir
@@ -867,17 +940,48 @@ def concat_all_recordings(target_dir):
         all_labels = np.concatenate((all_labels,temp_labels),axis=0) if type(all_trials) == np.ndarray else temp_labels
     return all_trials, all_labels
 
-def baseline_extractor(data, fs):
-    baseline = data[:, :, :fs]
-    data = data[:, :, fs::]
+def baseline_extractor(data, fs, baseline_length=1):
+    """
+    Extracts the baseline from the data.
+    Args:
+        data: data in ndarray
+        fs: frequency rate
+
+    Returns:
+        data ,baseline: ndarrays.
+    """
+    baseline = data[:, :, :fs*baseline_length]
+    data = data[:, :, fs*baseline_length::]
     return data, baseline
 
 def extract_2_labels(data, labels, classes_to_extract):
+        """
+        This function extracts the classes you choose from the given data
+        Args:
+            data: ndarrray of the data
+            labels: list of the labels
+            classes_to_extract: list[int[]] : a list of integers which represents the calsses in the daa you want
+            to extract
+
+        Returns:
+            data, labels (with only the desired classes)
+        """
         data_2_extract = [data[ind] for ind, label in enumerate(labels) if labels[ind] in classes_to_extract]
         labels_2_extract = [label for ind, label in enumerate(labels) if labels[ind] in classes_to_extract]
         return np.reshape(data_2_extract,[len(data_2_extract)] + list(data_2_extract[0].shape)), np.ravel(labels_2_extract)
 
 def save_as_mat(path, data, labels):
+    """
+    This function saves input data and labels in input path as .mat file. We used it to visualize data in matlab, s
+    we did not found an equivalent in python the the spectograms in matlab.
+    Args:
+        path:
+        data:
+        labels:
+
+    Returns:
+
+    """
     labels = {"labels": labels, "label": "experiment"}
     data = {"data": data, "label": "experiment"}
     scipy.io.savemat(path + r"\data.mat", labels)
