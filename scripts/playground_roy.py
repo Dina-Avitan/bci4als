@@ -70,7 +70,7 @@ class SVMFeatureSelection(Problem):
         num_features = self.X_train.shape[1]
         return self.alpha * score + (1 - self.alpha) * (num_selected / num_features)
 #import eeglib.eeg #steal features
-def load_eeg(path,data=None,labels=None, method='baseline'):
+def load_eeg(path,data=None,labels=None, method='baseline', existing_model=None):
     """This function is very very messy. its sole purpose is to be messy. It is meant to try and play with the data
     and to test for different ideas. change it and use it as you wish."""
     def ICA_check(unfiltered_model):
@@ -417,8 +417,11 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
         Returns:
 
         """
+        print(data.size)
+        print(labels.__len__())
         csp = CSP(n_components=2, reg='ledoit_wolf', log=True, norm_trace=False, transform_into='average_power',
                   cov_est='epoch')
+
         csp_features = Pipeline(
             [('asd', UnsupervisedSpatialFilter(PCA(3), average=True)), ('asdd', csp)]).fit_transform(data,
                                                                                                      labels)
@@ -463,15 +466,19 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
     # data = final_data
 
     ## if the input is data:
-    if data is None and labels is None:
-        # Our data
+    if existing_model:
+        # data = ICA_perform(existing_model).get_data()
+        data = existing_model.epochs.get_data()
+        labels = existing_model.labels
+    elif path:
         data2 = pd.read_pickle(path)
-        #
+        data = ICA_perform(data2).get_data()  # ICA
         labels = data2.labels
+    else:
+        pass
 
-        # # # Choose clean data or not
+# # # Choose clean data or not
         # data = data2.epochs.get_data()
-        data = ICA_perform(data2).get_data() # ICA
     # data = epochs_z_score(data)  # z score?
     # SPATIAL FILTERS LETS GO
     #Laplacian
@@ -479,7 +486,7 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
     # data, labels = extract_2_labels(data, labels, [0,1,2])
     # pred, bands = band_hunter_swarm_algorithm(data, labels,fs)
     # bands = np.matrix(bands)
-
+    print(f'Data Size is: {data.shape}')
     # Initiate classifiers
     clf = svm.SVC(decision_function_shape='ovo', kernel='linear',tol=1e-4)
     rf_classifier = RandomForestClassifier(random_state=0)
@@ -606,8 +613,8 @@ def load_eeg(path,data=None,labels=None, method='baseline'):
     fig.text(0.77, 0.29, textstr, fontsize=11, verticalalignment='top', bbox=props)
     plt.show()
     # print(bands)
-    print(bandpower_features_wtf.shape)
-    return np.mean(values, axis=1), bands
+    print(np.mean(scores_mix2))
+    return np.mean(scores_mix2), bands
 
 def get_tsne_feature_mat(model):
     """This function gets a model file and returns an dimension reduced(using tsne) features matrix and labels vector"""
@@ -925,7 +932,8 @@ def concat_all_recordings(target_dir):
                     except FileNotFoundError:
                         no_model_found = True
                         break
-        if no_model_found:
+        print(date_name)
+        if no_model_found or ('Off' in date_name):
             continue
         temp_trials = temp_model.epochs.get_data()
         temp_labels = temp_model.labels
@@ -987,11 +995,54 @@ def save_as_mat(path, data, labels):
     scipy.io.savemat(path + r"\data.mat", labels)
     scipy.io.savemat(path + r"\data.mat", data)
 
+def get_each_predictions_rate_from_folder(target_dir):
+    """
+    This function returns the prediction from every recording in a certain folder.
+    Args:
+        target_dir: string : path to the directory
+
+    Returns:
+        data, labels : of all the recordings in that directory
+    """
+    strip_func = lambda x: os.path.dirname(x)
+    curr_dir = os.getcwd()
+    recording_dir = strip_func(curr_dir) + r'\recordings' + target_dir
+    files_in_recording_dir = os.listdir(recording_dir)
+    model_names = []
+    total_pred = []
+    for date_name in files_in_recording_dir:
+        no_model_found = False
+        temp_path = os.path.join(recording_dir, date_name)
+        while True:
+            try:
+                temp_model = pd.read_pickle(os.path.join(temp_path, 'pre_laplacian.pickle'))
+                break
+            except FileNotFoundError:
+                try:
+                    temp_model = pd.read_pickle(os.path.join(temp_path,'trained_model.pickle'))
+                    break
+                except FileNotFoundError:
+                    try:
+                        temp_model = pd.read_pickle(os.path.join(temp_path, 'model.pickle'))
+                        break
+                    except FileNotFoundError:
+                        no_model_found = True
+                        break
+        if no_model_found:
+            continue
+        try:
+            total_pred.append(load_eeg('none', method='current_features',existing_model=temp_model)[0])
+            model_names.append(date_name)
+        except:
+            continue
+        print(total_pred)
+    return total_pred, model_names
+
 if __name__ == '__main__':
     path = r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\avi_right_left_idle\Online_05_07_22-18_16_32'
-    trials, labels = concat_all_recordings(r'\all_recording_avi')
-    # temp_results, temp_bands = load_eeg(path + '/model.pickle', method='wacky_features_asd')
-    temp_results, temp_bands = load_eeg(path + '/trained_model.pickle', data=trials, labels=labels, method='wacky_features')
+    pred_list, model_names = get_each_predictions_rate_from_folder(r'\all_recording_avi')
+    # trials, labels = concat_all_recordings(r'\avi_right_left_idle')
+    # temp_results, temp_bands = load_eeg('', data=trials, labels=labels, method='current_features')
     # import pandas as pd
     # model1 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/89/trained_model.pickle')
     # model2 = pd.read_pickle(r'C:\Users\User\Desktop\ALS_BCI\team13\bci4als-master\bci4als\recordings\roy/22/unfiltered_model.pickle')
