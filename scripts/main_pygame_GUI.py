@@ -1,6 +1,6 @@
 from offline_training import offline_experiment
 from online_training import run_experiment
-import GUI_pygame
+from bci4als.GUI import GUI_pygame
 
 # # from GUI import main
 type, path ,gui_keys = GUI_pygame.main()

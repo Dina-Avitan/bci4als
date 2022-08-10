@@ -35,23 +35,28 @@ class OnlineExperiment(Experiment):
     """
     Class for running an online MI experiment.
 
-    Attributes:
-    ----------
-
-        num_trials (int):
-            Amount of trials in the experiment.
-
-        buffer_time (float):
-            Time in seconds for collecting EEG data before model's prediction.
-
-        threshold (int):
-            The amount the times the model need to be correct (predict = stim) before moving to the next stim.
-
     """
 
     def __init__(self, eeg: EEG, model: MLModel, num_trials: int,
                  buffer_time: float, threshold: int, co_learning: bool,skip_after: Union[bool, int] = False,
                  debug=False, mode='practice',stim_sound = False,keys=(0,1,2), baseline_length=0):
+        """
+
+        Args:
+            eeg: The board
+            model: A model from a previous recording. On the basis of this model the prediction is made
+            num_trials: The number of trials you want. This number should be a multiple of the number of classes in the experiment
+            buffer_time:  Time in seconds for collecting EEG data before model's prediction.
+            threshold: The amount the times the model need to be correct (predict = stim) before moving to the next stim.
+            co_learning: (bool)
+            skip_after: The num of the same class repeat until it pass to the next trial
+            debug: in debug mode, The prediction will be correct 2/3 of the time and incorrect 1/3 of the time
+            mode:  If mode= 'practice': It will skip after skip_after errors. it will skip after threshold successes
+                    If mode= 'test': It will not skip. It will run skip_after times whether you succeed or fail the trial
+            stim_sound: (bool) If you want to add sound to the experiments
+            keys:  the selected parameters: 0-right, 1-left, 2-idel, 3-tongue, 4-hands (if you are not use the GUI)
+            baseline_length:
+        """
 
         super().__init__(eeg, num_trials,keys)
         # experiment params

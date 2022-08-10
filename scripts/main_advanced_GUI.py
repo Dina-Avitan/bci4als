@@ -1,6 +1,6 @@
-from GUI_offline import GUI_offline
-from GUI_online import GUI_online
-from choose_GUI import choose_GUI
+from bci4als.GUI.GUI_offline import *
+from bci4als.GUI.GUI_online import *
+from bci4als.GUI.choose_GUI import *
 from offline_training import offline_experiment
 from online_training import run_experiment
 
@@ -16,7 +16,3 @@ if type_dict['type'] == 'Online':
     param = g.run_gui()
     print(param)
     run_experiment(advanced_gui=param)
-
-# g = GUI()
-# param = g.run_gui()
-# print(param)

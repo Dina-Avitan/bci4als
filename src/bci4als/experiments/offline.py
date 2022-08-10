@@ -16,10 +16,29 @@ from psychopy import visual
 
 
 class OfflineExperiment(Experiment):
+    """
+      Class for running an offline MI experiment.
+
+      """
 
     def __init__(self, eeg: EEG, num_trials: int, trial_length: float,pygame_gui_folder_path,pygame_gui_keys,
                  next_length: float = 1, cue_length: float = 0.25, ready_length: float = 1,
-                 full_screen: bool = False, audio: bool = False,keys=(0,1,2), baseline_length=0):
+                 full_screen: bool = False, audio: bool = False, keys=(0,1,2), baseline_length=0):
+        """
+        Args:
+            eeg: The board
+            num_trials: The number of trials you want. This number should be a multiple of the number of classes in the experiment
+            trial_length: The length of each trial (sec)
+            pygame_gui_folder_path: in case the folder selected by the pygame GUI
+            pygame_gui_keys:  in case the parameters selected by the pygame GUI
+            next_length: he time the words "The next stimulus is..." appears
+            cue_length: The time the cue image appears (before the word "ready")
+            ready_length: The time the word "ready" appears
+            full_screen: (bool)
+            audio: (bool) If you want to add sound to the experiments
+            keys: the selected parameters: 0-right, 1-left, 2-idel, 3-tongue, 4-hands (if you are not use the GUI)
+            baseline_length:
+        """
 
         if pygame_gui_keys:
             keys = pygame_gui_keys

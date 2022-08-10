@@ -88,6 +88,16 @@ def plot_elec_model_ica(model, elec_num='all',range_time = 'all'):
     plt.show()
 
 def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 0, fmax = 70):
+    """
+    Plot the powerspectrum
+    Args:
+        raw_model: The data as model
+        classes: The Classes you want to plot
+        elec: The electrod index you want to plot
+        show_std: (bool) if you want to show standard division
+        fmin, fmax: The range
+
+    """
     colors = ['blue','darkred','green']
     std_colors = ['lightsteelblue','salmon','palegreen']
     class_name = ['Right','Left','Idle']
@@ -115,6 +125,17 @@ def plot_psd_classes(raw_model, classes = [0,1,2] ,elec = 0,show_std = False,fmi
     plt.show()
 
 def plot_psd_classes_trials(raw_model, epoch, classes = [0,1,2] ,elec = 0,show_std = False,fmin = 1, fmax = 70):
+    """
+        Plot the powerspectrum
+        Args:
+            raw_model: The data as model
+            epoch: The data as epoch
+            classes: The Classes you want to plot
+            elec: The electrod index you want to plot
+            show_std: (bool) if you want to show standard division
+            fmin, fmax: The range
+
+        """
     colors = ['blue','darkred','green']
     std_colors = ['lightsteelblue','salmon','palegreen']
     class_name = ['Right','Left','Idle']
@@ -142,6 +163,14 @@ def plot_psd_classes_trials(raw_model, epoch, classes = [0,1,2] ,elec = 0,show_s
     plt.show()
 
 def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125,scaling = 'spectrum'):
+    """
+    The function create spectrograms of the data
+    Args:
+        raw_model: The data as model
+        elec: he electrod index you want to plot
+        nwindow, noverlap, nperseg, nfft, scaling: hyperparameters- read in scipy.signal.spectrogram documentation
+
+    """
     sr = raw_model.epochs.info['sfreq']
     elec = (raw_model.epochs.ch_names[elec],elec)
     spec_dict ={}
@@ -166,6 +195,15 @@ def create_spectrogram(raw_model,elec=0, nwindow=100, noverlap=10, nperseg=50,nf
     plot_spectrogram(spec_dict,elec)
 
 def create_spectrogram_raw(all_data,labels,elec=0, nwindow=100, noverlap=10, nperseg=50,nfft = 125,scaling = 'spectrum'):
+    """
+        The function create spectrograms of the data- from ndarray
+        Args:
+            raw_model: The data as ndarray
+            labels: The labels
+            elec: he electrod index you want to plot
+            nwindow, noverlap, nperseg, nfft, scaling: hyperparameters- read in scipy.signal.spectrogram documentation
+
+        """
     all_elec = ['C3', 'C4', 'Cz', 'FC1', 'FC2', 'FC5', 'FC6', 'CP1', 'CP2', 'CP5', 'CP6'];
     sr = 125
     elec = (all_elec[elec],elec)
@@ -191,6 +229,10 @@ def create_spectrogram_raw(all_data,labels,elec=0, nwindow=100, noverlap=10, npe
     plot_spectrogram(spec_dict,elec)
 
 def plot_spectrogram(spec_dict,elec):
+    """
+    Helper function of the "reate_spectrogram" function
+
+    """
     class_name = ['Right', 'Left', 'Idle','Right-Left diff']
     fig, axs = plt.subplots(2, 2, sharex=True, sharey=True)
     # add a big axes, hide frame
@@ -208,7 +250,15 @@ def plot_spectrogram(spec_dict,elec):
     plt.colorbar(im, ax=axs.ravel().tolist())
     plt.show()
 
-def ICA_noam(unfiltered_model):
+def ICA_without_mne(unfiltered_model):
+    """
+    This function preforms ICA process without using mne.
+    Args:
+        unfiltered_model: A model, before ICA transform
+
+    Returns: The data after ICA
+
+    """
     # ica = ICA(n_components=15, method='fastica', max_iter="auto").fit(epochs)
     trials = unfiltered_model.epochs.get_data()
     all_sig = [trials[i] for i in range(len(trials))]
@@ -231,9 +281,11 @@ def ICA_check(unfiltered_model):
     This function is for visualization the ICA process and for choosing coordinates to exclude
     Args:
         unfiltered_model: A model, before ICA transform
+
     for GUI: run this lines in the console:
              %matplotlib qt
              %gui qt
+             mne.viz.set_browser_backend('qt')
     """
     data = unfiltered_model.epochs
     epochs = data.copy()
@@ -285,6 +337,14 @@ def epochs_z_score(epochs):
     return data
 
 def laplacian(model):
+    """
+    The function preforms laplacian
+    Args:
+        model: The data use to be as model structure
+
+    Returns: The data after laplacian
+
+    """
     perm_c3 = (0, 5, 3, 9, 7, 1, 4, 6, 8, 10)
     data = model.epochs.get_data()
     for trial in range(data.shape[0]):
@@ -304,6 +364,15 @@ def laplacian(model):
     return data
 
 def get_feature_mat(model, do_laplacian = True):
+    """
+    Create features matrix with a lot of kinds of features
+    Args:
+        model: The data use to be as model structure
+        do_laplacian: (bool) if you want to preform laplcian
+
+    Returns:
+
+    """
     # define parameters
     fs = 125
     bands = np.matrix('7 12; 12 15; 17 22; 25 30; 7 35; 30 35')
@@ -345,6 +414,14 @@ def get_feature_mat(model, do_laplacian = True):
     return features_mat, class_labels, feature_labels
 
 def histo_histo(features_mat,class_labels, features_labels):
+    """
+    This function creates histograms of the features To get a visual measure of the ability to separate the classes
+    Args:
+        features_mat: The features matrix
+        class_labels: The class labels
+        features_labels: The features names
+
+    """
     right_indices = [i for i in range(len(class_labels)) if class_labels[i] == 0]
     left_indices = [i for i in range(len(class_labels)) if class_labels[i] == 1]
     idle_indices = [i for i in range(len(class_labels)) if class_labels[i] == 2]
@@ -369,6 +446,11 @@ def histo_histo(features_mat,class_labels, features_labels):
         plt.show()
 
 def epochs_to_raw(epochs):
+    """
+    Convert epoch (mne structure) to raw (mne structure)
+    good fot ICA
+
+    """
     trials = epochs.get_data()
     data = [trials[i] for i in range(len(trials))]
     data = np.concatenate(data, 1)
@@ -377,6 +459,13 @@ def epochs_to_raw(epochs):
     return raw
 
 def ndarray_to_raw(data, ch_names):
+    """
+     Convert epoch (mne structure) to raw (mne structure)
+    good fot ICA
+
+    Returns:raw (mne structure)
+
+    """
     comb_data = [data[i] for i in range(len(data))]
     comb_data = np.concatenate(comb_data, 1)
     info= mne.create_info(ch_names=ch_names,sfreq= 125 , ch_types='eeg')
@@ -384,6 +473,12 @@ def ndarray_to_raw(data, ch_names):
     return raw
 
 def plot_online_results(path):
+    """
+    Thif function plots the results of the online session:
+    Bar plot + Confusion matrix
+    Args:
+        path: The path of the data
+    """
     with open(path) as f:
         data = json.load(f)
     #rep_on_class = len(data[0])
@@ -421,58 +516,4 @@ def plot_online_results(path):
     ax.yaxis.set_ticklabels(labels)
     plt.show()
 
-raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_right_left_idle\Offline_12_05_22-14_56_22\pre_laplacian.pickle')
-# plot_online_results(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\9\results.json')
-# data = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\12\trained_model.pickle')
-# trials = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022\4\trials.pickle')
-# data3 = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\trials.pickle')
-raw_model = pd.read_pickle(r'C:\Users\pc\Desktop\bci4als\recordings\roy\10\raw_model.pickle')
-# #
-#epochs_to_raw(data2.epochs)
-# create_spectrogram(data2)
-# plot_psd_classes(data2)
-"""
-%matplotlib qt
-%gui qt
-mne.viz.set_browser_backend('qt')
-"""
 
-
-# features_mat, class_lables, features_lables = get_feature_mat(data2)
-# histo_histo(features_mat, class_lables, features_lables)
-
-"""
-from datetime import date
-        today = date.today()
-        today = today.strftime("%d/%m/%Y")
-        session_folder = os.path.join(subject_folder,today)
-"""
-
-# @staticmethod
-#     def create_session_folder(subject_folder: str) -> str:
-#         """
-#         The method create new folder for the current session. The folder will be at the given subject
-#         folder.
-#         The method also creating a metadata file and locate it inside the session folder
-#         :param subject_folder: path to the subject folder
-#         :return: session folder path
-#         """
-#
-#         current_sessions = []
-#         for f in os.listdir(subject_folder):
-#
-#             # try to convert the current sessions folder to int
-#             # and except if one of the sessions folder is not integer
-#             try:
-#                 current_sessions.append(int(f))
-#
-#             except ValueError:
-#                 continue
-#
-#         # Create the new session folder
-#         session = (max(current_sessions) + 1) if len(current_sessions) > 0 else 1
-#         session_folder = os.path.join(subject_folder, str(session))
-#         os.mkdir(session_folder)
-#
-#         return session_folder
-# r'C:\Users\pc\Desktop\bci4als\recordings\avi_2022
