@@ -4,8 +4,12 @@ from bci4als.GUI.choose_GUI import *
 from offline_training import offline_experiment
 from online_training import run_experiment
 
-type = choose_GUI()
-type_dict= type.run_gui()
+"""
+Run it to initialize the session
+"""
+
+type = choose_GUI() # Choose online or offline
+type_dict = type.run_gui()
 if type_dict['type'] == 'Offline':
     g = GUI_offline()
     param = g.run_gui()
